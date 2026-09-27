@@ -1,0 +1,177 @@
+// The lower trail: Wool Gate, Fog Ford and Cairn Hollow.
+
+import * as THREE from "three";
+import type { DioramaParts } from "./diorama";
+import { mesh, PALETTE, rng, solid } from "./kit";
+import { grass, log, plinth, post, stone } from "./props";
+
+export function gate(radius: number, seed: number): DioramaParts {
+  const group = plinth(radius, 1.6, seed);
+  group.add(grass(radius, 260, seed, [{ x: 0, z: 0.6, r: 0.7 }]));
+  // Sheep gate between two dry-stone wall stubs.
+  const gateGroup = new THREE.Group();
+  for (const x of [-0.7, 0.7]) {
+    const p = post(1.05, PALETTE.woodDark);
+    p.position.x = x;
+    gateGroup.add(p);
+  }
+  for (const y of [0.3, 0.6, 0.9]) {
+    const rail = mesh(new THREE.BoxGeometry(1.3, 0.07, 0.06), solid(PALETTE.wood, 0.85));
+    rail.position.y = y;
+    gateGroup.add(rail);
+  }
+  const brace = mesh(new THREE.BoxGeometry(1.45, 0.07, 0.05), solid(PALETTE.wood, 0.85));
+  brace.position.y = 0.6;
+  brace.rotation.z = 0.42;
+  gateGroup.add(brace);
+  gateGroup.position.set(0.4, 0, -1.1);
+  gateGroup.rotation.y = -0.2;
+  group.add(gateGroup);
+  const r = rng(seed);
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 9; i++) {
+      const s = stone(0.18 + r() * 0.08, seed + i * 7 + side, 0.5);
+      s.position.set(
+        0.4 + side * (0.95 + (i % 3) * 0.32),
+        0.1 + Math.floor(i / 3) * 0.2,
+        -1.1 - side * 0.12,
+      );
+      s.rotation.y = r() * 3;
+      group.add(s);
+    }
+  }
+  const seat = log(1.5, 0.2, seed + 11);
+  seat.position.set(-0.7, 0.18, 0.9);
+  seat.rotation.y = 0.35;
+  group.add(seat);
+  // A signpost pointing up the trail.
+  const sign = post(1.2);
+  sign.position.set(1.5, 0, 0.6);
+  const board = mesh(new THREE.BoxGeometry(0.62, 0.16, 0.05), solid("#9a7045", 0.8));
+  board.position.set(1.72, 1.02, 0.6);
+  board.rotation.z = 0.08;
+  group.add(sign, board);
+  return {
+    group,
+    stand: new THREE.Vector3(0.3, 0, 0.3),
+    fogHeight: 1.2,
+    fogSpread: radius * 0.8,
+    update() {},
+  };
+}
+
+export function ford(radius: number, seed: number): DioramaParts {
+  const group = plinth(radius, 1.4, seed);
+  group.add(
+    grass(radius, 200, seed, [
+      { x: 0, z: 0, r: 0.75 },
+      { x: 1.2, z: 0, r: 0.7 },
+      { x: -1.2, z: 0, r: 0.7 },
+    ]),
+  );
+  // The beck: a band of dark, glossy water crossing the plinth.
+  const water = mesh(
+    new THREE.BoxGeometry(0.95, 0.06, radius * 2 - 0.2),
+    new THREE.MeshStandardMaterial({ color: PALETTE.water, roughness: 0.15, metalness: 0.1 }),
+    "receive",
+  );
+  water.position.y = 0.05;
+  group.add(water);
+  const r = rng(seed + 5);
+  for (let i = 0; i < 12; i++) {
+    const bank = stone(0.16 + r() * 0.1, seed + 30 + i, 0.8);
+    const side = i % 2 === 0 ? -1 : 1;
+    bank.position.set(side * (0.55 + r() * 0.15), 0.02, (r() - 0.5) * radius * 1.8);
+    group.add(bank);
+  }
+  // Stepping stones, only visible with the fog bottled.
+  const stoneMat = new THREE.MeshStandardMaterial({
+    color: "#a39f93",
+    roughness: 0.7,
+    transparent: true,
+  });
+  const stones: THREE.Mesh[] = [];
+  for (let i = 0; i < 4; i++) {
+    const s = mesh(new THREE.CylinderGeometry(0.17, 0.2, 0.12, 9), stoneMat);
+    s.position.set(-0.75 + i * 0.5, 0.06, 0.25 + Math.sin(i * 1.7) * 0.18);
+    stones.push(s);
+    group.add(s);
+  }
+  return {
+    group,
+    stand: new THREE.Vector3(-1.4, 0, 0.5),
+    fogHeight: 1.1,
+    fogSpread: 1.1,
+    update(_dt, time, calm, lv) {
+      const shown = 1 - lv.fog;
+      stoneMat.opacity = shown;
+      stones.forEach((s, i) => {
+        s.visible = shown > 0.02;
+        s.position.y = -0.1 + shown * 0.16 + (calm ? 0 : Math.sin(time * 1.3 + i) * 0.006);
+      });
+    },
+  };
+}
+
+export function hollow(radius: number, seed: number): DioramaParts {
+  const group = plinth(radius, 1.8, seed);
+  group.add(grass(radius, 220, seed, [{ x: 0, z: 0.1, r: 1.0 }]));
+  // The ledge behind the hollow, too tall to climb.
+  const ledge = stone(0.95, seed + 2, 0.55);
+  ledge.scale.set(1.5, 1.9, 0.9);
+  ledge.position.set(0.1, 0.6, -1.5);
+  group.add(ledge);
+  // The dip itself and the ring of marker cairns with pale spiral marks.
+  const dip = mesh(new THREE.CircleGeometry(0.65, 28), solid("#2f3a24", 1), "receive");
+  dip.rotation.x = -Math.PI / 2;
+  dip.position.set(0, 0.03, 0.1);
+  group.add(dip);
+  const r = rng(seed);
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    const cairn = new THREE.Group();
+    for (let k = 0; k < 3; k++) {
+      const s = stone(0.13 - k * 0.03, seed + i * 5 + k, 0.35);
+      s.position.y = 0.06 + k * 0.12;
+      s.rotation.y = r() * 3;
+      cairn.add(s);
+    }
+    const mark = mesh(new THREE.TorusGeometry(0.05, 0.012, 4, 12), solid("#e9e4cf", 0.6), "none");
+    mark.position.set(0, 0.12, 0.12);
+    cairn.add(mark);
+    cairn.position.set(Math.cos(a) * 0.95, 0, 0.1 + Math.sin(a) * 0.95);
+    cairn.lookAt(0, 0, 0.1);
+    group.add(cairn);
+  }
+  // The cloud step: soft white puffs that gather when fog is released here.
+  const cloud = new THREE.Group();
+  const cloudMat = new THREE.MeshStandardMaterial({
+    color: "#f4f6f4",
+    roughness: 1,
+    emissive: "#8a9a9a",
+    emissiveIntensity: 0.25,
+  });
+  for (let i = 0; i < 9; i++) {
+    const p = mesh(new THREE.SphereGeometry(0.22 + r() * 0.16, 14, 10), cloudMat, "cast");
+    p.position.set(
+      (r() - 0.5) * 0.9,
+      0.35 + r() * 0.35 + (i > 5 ? 0.35 : 0),
+      (r() - 0.5) * 0.6 - (i > 5 ? 0.45 : 0),
+    );
+    cloud.add(p);
+  }
+  cloud.position.set(0, 0, 0.0);
+  group.add(cloud);
+  return {
+    group,
+    stand: new THREE.Vector3(1.1, 0, 1.0),
+    fogHeight: 0.5,
+    fogSpread: 0.5,
+    update(_dt, time, calm, lv) {
+      const s = lv.fog;
+      cloud.visible = s > 0.02;
+      cloud.scale.setScalar(0.2 + s * 0.8);
+      cloud.position.y = calm ? 0 : Math.sin(time * 0.8) * 0.04;
+    },
+  };
+}
