@@ -1,0 +1,96 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --color-moss-950: #141a12;
+  --color-moss-900: #1d261a;
+  --color-moss-800: #2b3826;
+  --color-moss-600: #4c6340;
+  --color-moss-300: #b6c3a0;
+  --color-paper: #f1e9d6;
+  --color-paper-deep: #e2d5b8;
+  --color-ink: #3b2e22;
+  --color-lantern: #ffb45e;
+  --color-fog: #dfe6e4;
+  --color-rain: #8fc0dc;
+  --color-wind: #e8dca0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #c9cbbf;
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-lantern);
+  outline-offset: 2px;
+}
+
+.panel {
+  background: color-mix(in oklab, var(--color-moss-950) 78%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid color-mix(in oklab, var(--color-moss-300) 22%, transparent);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.25);
+}
+
+.paper {
+  background:
+    radial-gradient(circle at 20% 10%, rgb(255 255 255 / 0.45), transparent 40%),
+    repeating-linear-gradient(0deg, transparent 0 27px, rgb(80 110 140 / 0.14) 27px 28px),
+    var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-serif);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: 1px solid color-mix(in oklab, var(--color-moss-300) 35%, transparent);
+  background: color-mix(in oklab, var(--color-moss-800) 85%, transparent);
+  color: var(--color-paper);
+  transition:
+    background 0.2s,
+    transform 0.15s;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--color-moss-600);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-warm {
+  background: #8a5a2c;
+  border-color: #d9a66b;
+}
+
+.btn-warm:hover:not(:disabled) {
+  background: #a26a34;
+}

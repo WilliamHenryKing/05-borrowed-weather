@@ -6,5 +6,5 @@ export default defineConfig({
   plugins: [react(), tailwind()],
   server: { host: "127.0.0.1", port: 4515, strictPort: true },
   preview: { host: "127.0.0.1", port: 4615, strictPort: true },
-  build: { cssMinify: "lightningcss" },
+  build: { cssMinify: "lightningcss", chunkSizeWarningLimit: 1200 },
 });
