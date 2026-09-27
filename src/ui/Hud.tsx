@@ -56,7 +56,8 @@ export function Hud({ state, message, onAction, onNotebook, onHint, hint }: HudP
         </section>
         <div className="pointer-events-auto flex flex-col items-end gap-2 sm:flex-row">
           <button type="button" className="btn" onClick={onNotebook} aria-keyshortcuts="N">
-            {info.hasSeat ? "Sit & read notebook" : "Notebook"}
+            {info.hasSeat && <span className="hidden sm:inline">Sit &amp; read</span>}
+            Notebook
             <span className="rounded-full bg-paper/15 px-1.5 text-xs">
               {state.discoveries.length}
             </span>
