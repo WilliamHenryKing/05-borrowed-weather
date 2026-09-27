@@ -2,7 +2,7 @@
 
 import { type Action, type GameState, reachable } from "../game/state";
 import { LOCATION_INFO, LOCATIONS, type LocationId, routesFrom, type Weather } from "../game/world";
-import { Jar, WeatherGlyph } from "./Glyphs";
+import { Jar, SoundGlyph, WeatherGlyph } from "./Glyphs";
 
 interface HudProps {
   state: GameState;
@@ -11,11 +11,22 @@ interface HudProps {
   onNotebook: () => void;
   onHint: () => void;
   hint: string | null;
+  muted: boolean;
+  onMute: () => void;
 }
 
 const KEY: Record<Weather, string> = { fog: "1", rain: "2", wind: "3" };
 
-export function Hud({ state, message, onAction, onNotebook, onHint, hint }: HudProps) {
+export function Hud({
+  state,
+  message,
+  onAction,
+  onNotebook,
+  onHint,
+  hint,
+  muted,
+  onMute,
+}: HudProps) {
   const info = LOCATION_INFO[state.at];
   const idx = LOCATIONS.indexOf(state.at);
   const canReach = reachable(state.weather, state.at);
@@ -62,9 +73,21 @@ export function Hud({ state, message, onAction, onNotebook, onHint, hint }: HudP
               {state.discoveries.length}
             </span>
           </button>
-          <button type="button" className="btn" onClick={onHint} aria-keyshortcuts="H">
-            Hint
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="btn"
+              onClick={onMute}
+              aria-pressed={muted}
+              aria-keyshortcuts="M"
+              aria-label={muted ? "Sound off. Turn sound on" : "Sound on. Mute"}
+            >
+              <SoundGlyph muted={muted} />
+            </button>
+            <button type="button" className="btn" onClick={onHint} aria-keyshortcuts="H">
+              Hint
+            </button>
+          </div>
         </div>
       </header>
 

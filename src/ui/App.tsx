@@ -1,6 +1,9 @@
 // Wires the pure game to the three.js trail and the React HUD.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { cuesFor } from "../audio/cues";
+import { ambienceMix } from "../audio/mix";
+import { SoundBoard } from "../audio/sound";
 import { DISCOVERIES } from "../game/notebook";
 import { hint as nextHint } from "../game/solver";
 import { type Action, apply, createGame, type GameState } from "../game/state";
@@ -24,23 +27,31 @@ export function App() {
   const [hint, setHint] = useState<string | null>(null);
   const [intro, setIntro] = useState(true);
   const [panel, setPanel] = useState<"none" | "notebook" | "postcard">("none");
+  const [sound] = useState(() => new SoundBoard());
+  const [muted, setMuted] = useState(sound.muted);
+  const lastPanel = useRef(panel);
 
-  const act = useCallback((action: Action) => {
-    const before = gameRef.current;
-    const out = apply(before, action);
-    const noted = out.found
-      .map((id) => DISCOVERIES.find((d) => d.id === id)?.title)
-      .filter(Boolean)
-      .map((t) => ` Noted: “${t}”.`)
-      .join("");
-    setMessage(out.message + noted);
-    if (!out.ok) return;
-    gameRef.current = out.state;
-    setGame(out.state);
-    setHint(null);
-    setIntro(false);
-    if (out.state.finished && !before.finished) window.setTimeout(() => setPanel("postcard"), 1400);
-  }, []);
+  const act = useCallback(
+    (action: Action) => {
+      const before = gameRef.current;
+      const out = apply(before, action);
+      const noted = out.found
+        .map((id) => DISCOVERIES.find((d) => d.id === id)?.title)
+        .filter(Boolean)
+        .map((t) => ` Noted: “${t}”.`)
+        .join("");
+      setMessage(out.message + noted);
+      for (const c of cuesFor(before, out)) sound.play(c.name, c);
+      if (!out.ok) return;
+      gameRef.current = out.state;
+      setGame(out.state);
+      setHint(null);
+      setIntro(false);
+      if (out.state.finished && !before.finished)
+        window.setTimeout(() => setPanel("postcard"), 1400);
+    },
+    [sound],
+  );
 
   useEffect(() => {
     const el = host.current;
@@ -62,7 +73,36 @@ export function App() {
 
   useEffect(() => {
     scene.current?.sync(game);
-  }, [game]);
+    sound.setMix(ambienceMix(game));
+  }, [game, sound]);
+
+  // Audio starts on the first gesture; nothing is fetched before then.
+  useEffect(() => {
+    const unlock = () => sound.unlock();
+    window.addEventListener("pointerdown", unlock, true);
+    window.addEventListener("keydown", unlock, true);
+    return () => {
+      window.removeEventListener("pointerdown", unlock, true);
+      window.removeEventListener("keydown", unlock, true);
+    };
+  }, [sound]);
+
+  useEffect(() => {
+    const was = lastPanel.current;
+    lastPanel.current = panel;
+    if (was === panel) return;
+    if (panel === "notebook") sound.play("book-open");
+    else if (panel === "postcard") sound.play("page");
+    else if (was === "notebook") sound.play("book-close");
+    sound.setDucked(panel !== "none");
+  }, [panel, sound]);
+
+  const toggleMute = useCallback(() => {
+    const next = !sound.muted;
+    sound.setMuted(next);
+    setMuted(next);
+    if (!next) sound.play("toggle");
+  }, [sound]);
 
   const replay = useCallback(() => {
     const fresh = createGame();
@@ -74,7 +114,10 @@ export function App() {
     setMessage("A fresh morning at the Wool Gate.");
   }, []);
 
-  const showHint = useCallback(() => setHint(nextHint(gameRef.current)), []);
+  const showHint = useCallback(() => {
+    sound.play("hint", { gain: 0.6 });
+    setHint(nextHint(gameRef.current));
+  }, [sound]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -93,12 +136,13 @@ export function App() {
       } else if (k === "r") act({ type: "release" });
       else if (k === "h") showHint();
       else if (k === "n") setPanel("notebook");
+      else if (k === "m") toggleMute();
       else return;
       e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [act, showHint]);
+  }, [act, showHint, toggleMute]);
 
   return (
     <main className="relative h-dvh w-full select-none">
@@ -110,8 +154,18 @@ export function App() {
         onNotebook={() => setPanel("notebook")}
         onHint={showHint}
         hint={hint}
+        muted={muted}
+        onMute={toggleMute}
       />
-      {intro && <Intro onBegin={() => setIntro(false)} />}
+      {intro && (
+        <Intro
+          onBegin={() => {
+            sound.unlock();
+            sound.play("click");
+            setIntro(false);
+          }}
+        />
+      )}
       {game.finished && panel === "none" && (
         <button
           type="button"
