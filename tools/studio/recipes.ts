@@ -41,13 +41,51 @@ void (0 as unknown as Mat | Vec3 | Build);
 // BORROWED WEATHER — trail diorama kit: damp mossy rocks, stumps, signposts, the weather jar
 // and a lantern shelter.
 const rock: Build = (seed) => {
+  // Trail stones in five habits (run-03's 80 were near-identical moss-capped pebbles): rounded
+  // boulders, angular blocks, flat stepping slabs, trail cairns and split boulders, each with
+  // a moss cap, lichen rosettes or bare stone.
   const r = rng(seed);
-  const s = range(r, 0.3, 1.6);
-  const stone = mat(pick(r, [0x6b6e6a, 0x7a7b73, 0x5e625e, 0x86857a]), 0.7);
+  const s = range(r, 0.3, 1.4);
+  const stone = mat(pick(r, [0x6b6e6a, 0x7a7b73, 0x5e625e, 0x86857a, 0x8a8172, 0x5b5850]), 0.7);
   const moss = mat(pick(r, [0x4f6b2f, 0x5c7a34, 0x3f5a28]), 0.9);
-  let body = blend(s * 0.2, ellipsoid(s, s * range(r, 0.4, 0.8), s * range(r, 0.6, 1), stone), move(ellipsoid(s * 0.6, s * 0.5, s * 0.6, stone), [s * 0.5, s * 0.1, s * 0.2]));
-  body = displace(body, s * 0.06, 2.5 / s, 5, seed);
-  return paint(body, (x, y, z, base) => (y > s * 0.15 + fbm(x * 3, y * 3, z * 3, 3, seed) * s * 0.3 ? moss : base));
+  const lichen = mat(pick(r, [0xb8b27a, 0xc9c08e, 0xc98a3a]), 0.85);
+  const habit = Math.floor(r() * 5);
+  let body: Node;
+  if (habit === 0) {
+    body = blend(s * 0.2, ellipsoid(s, s * range(r, 0.4, 0.8), s * range(r, 0.6, 1), stone), move(ellipsoid(s * 0.6, s * 0.5, s * 0.6, stone), [s * 0.5, s * 0.1, s * 0.2]));
+    body = displace(body, s * 0.06, 2.5 / s, 5, seed);
+  } else if (habit === 1) {
+    // Angular block: a bevelled box, tilted, with a crack cut through it.
+    body = rotate(box(s * range(r, 1.2, 1.8), s * range(r, 0.7, 1.1), s * range(r, 0.9, 1.3), s * 0.08, stone), [range(r, -0.2, 0.2), r() * 3, range(r, -0.15, 0.15)]);
+    body = carve(s * 0.02, body, move(rotate(box(s * 0.04, s * 3, s * 3), [0, r() * 3, range(r, -0.4, 0.4)]), [s * range(r, -0.3, 0.3), 0, 0]));
+    body = displace(body, s * 0.03, 3.5 / s, 4, seed);
+  } else if (habit === 2) {
+    // Stepping slab: wide, thin, gently domed, worn at the edges.
+    body = displace(blend(s * 0.1, box(s * range(r, 1.6, 2.2), s * range(r, 0.22, 0.34), s * range(r, 1.2, 1.8), s * 0.1, stone), move(ellipsoid(s * 0.7, s * 0.18, s * 0.6, stone), [0, s * 0.1, 0])), s * 0.025, 3 / s, 4, seed);
+  } else if (habit === 3) {
+    // Trail cairn: flattish stones stacked, each a little off-centre.
+    const stones: Node[] = [];
+    let y = 0;
+    const count = 3 + Math.floor(r() * 3);
+    for (let k = 0; k < count; k++) {
+      const w = s * (0.55 - k * 0.07) * range(r, 0.85, 1.15);
+      const h = w * range(r, 0.35, 0.5);
+      stones.push(move(rotate(ellipsoid(w, h, w * range(r, 0.7, 1), stone), [range(r, -0.12, 0.12), r() * 3, range(r, -0.12, 0.12)]), [range(r, -0.06, 0.06) * s, y + h * 0.8, range(r, -0.06, 0.06) * s]));
+      y += h * 1.55;
+    }
+    body = displace(union(...stones), s * 0.02, 4 / s, 4, seed);
+  } else {
+    // Split boulder: a rounded stone cracked through, the halves a hand apart.
+    const whole = displace(ellipsoid(s, s * range(r, 0.55, 0.8), s * range(r, 0.7, 1), stone), s * 0.05, 2.5 / s, 5, seed);
+    body = carve(s * 0.015, whole, rotate(box(s * range(r, 0.06, 0.12), s * 3, s * 3), [0, r() * 3, range(r, -0.2, 0.2)]));
+  }
+  const cover = r();
+  const mossLine = range(r, 0.05, 0.45);
+  return paint(body, (x, y, z, base) => {
+    if (cover < 0.45 && y > s * mossLine + fbm(x * 3, y * 3, z * 3, 3, seed) * s * 0.3) return moss;
+    if (cover >= 0.45 && cover < 0.8 && fbm(x * 9, y * 9, z * 9, 2, seed + 7) > 0.35) return lichen;
+    return base;
+  });
 };
 const stump: Build = (seed) => {
   const r = rng(seed);
