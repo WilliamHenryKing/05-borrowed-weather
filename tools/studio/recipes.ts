@@ -103,9 +103,9 @@ const shelter: Build = (seed) => {
 
 export const project = { id: "05-borrowed-weather", name: "BORROWED WEATHER", background: 0x2e3a33 };
 export const families: Recipes["families"] = [
-  { id: "trail-rock", count: 40, voxel: 0.012, keep: 0.25, dirt: 0.5, build: rock },
-  { id: "stump", count: 16, voxel: 0.006, keep: 0.3, build: stump },
-  { id: "signpost", count: 16, voxel: 0.006, keep: 0.3, build: signpost },
+  { id: "trail-rock", count: 80, voxel: 0.012, keep: 0.25, dirt: 0.5, build: rock },
+  { id: "stump", count: 32, voxel: 0.006, keep: 0.3, build: stump },
+  { id: "signpost", count: 24, voxel: 0.006, keep: 0.3, build: signpost },
   { id: "weather-jar", count: 12, voxel: 0.002, keep: 0.35, hero: true, build: jar },
   { id: "lantern-shelter", count: 8, voxel: 0.02, keep: 0.3, hero: true, build: shelter },
 ];
