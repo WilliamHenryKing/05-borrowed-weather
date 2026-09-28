@@ -41,3 +41,64 @@ What the baseline shows:
 6. **Post chain**: `RenderPass` → `GTAOPass` → `UnrealBloomPass` (HDR threshold, only lanterns glow) → `SMAAPass` → `OutputPass`, with a lower tier for phones.
 7. **Aerial perspective**: exponential, height-aware haze tinted from the sky, and distant islands built like the near ones so they soften instead of floating as triangles.
 8. **Texel-snapped, fitted shadows** that follow the focused diorama without shimmering.
+
+## After the fidelity pass (`docs/visual/captures/after/`)
+
+Same bookmarks, same build flags and the same SwiftShader renderer. Desktop bookmarks ran on the high tier (GTAO, bloom, SMAA). `phone-hero` emulates a touch device, so it ran on the low tier.
+
+| Criterion | establishing | hero | closeup | grazing | phone-hero |
+| --- | --- | --- | --- | --- | --- |
+| Light plausibility | 3 | 3 | 3 | 3 | 3 |
+| Materials | 3 | 3 | 3 | 3 | 3 |
+| Detail density | 3 | 3 | 3 | 3 | 3 |
+| Environment integration | 3 | 3 | 3 | 2 | 3 |
+| Atmosphere and depth | 3 | 3 | 3 | 3 | 3 |
+| Composition | 3 | 3 | 2 | 2 | 3 |
+| Artefacts | 2 | 3 | 3 | 2 | 3 |
+| Motion and UI integration | 3 | 3 | 3 | 3 | 3 |
+| **Overall** | **2.9** | **3.0** | **2.9** | **2.6** | **3.0** |
+
+Before → after: establishing 2.1 → 2.9, hero 2.4 → 3.0, closeup 1.6 → 2.9, grazing 1.8 → 2.6, phone-hero 2.4 → 3.0. The pass reaches "competent indie" across the board. It is not yet the premium studio web piece (4).
+
+### What changed
+
+- **One lighting model.** The CC0 HDRI is background and PMREM environment. Its measured sun (direction, illuminance, colour) drives the key light and is clamped out of the IBL copy. One quaternion orients the sky. AgX runs once in `OutputPass`, and exposure is the only brightness control.
+- **Post chain.** `RenderPass` → `GTAOPass` → `UnrealBloomPass` (HDR threshold) → `OutputPass` → `SMAAPass` on the high tier. The low tier keeps only the render and output passes.
+- **Aerial perspective.** Exponential extinction over true distance, thinning with height and tinted with the sky's horizon radiance. A lit cloud floor hides the HDRI's lower hemisphere.
+- **Islands.** Smooth lathed masses with a triplanar terrain shader: scanned cliff strata regraded toward damp grey, moss at the rim, saturated turf, baked occlusion. Rain darkens and glosses them.
+- **Scanned CC0 rocks** for walls, cairns, banks and stepping stones, and boulders for the ledge and cliff. Planks and bark for all joinery, masonry and a turf roof on the shelter.
+- **Instanced grass clumps and ferns** with alpha-to-coverage and wind, plus procedural wildflowers, all jittered in scale, rotation and tone.
+- **Water.** A transmission surface (refraction of a pebble bed, reflection of the sky) with a tileable ripple normal map, under the foam and rain-ring overlay.
+- **Shadows.** Fitted and texel-snapped, following the focused diorama.
+
+### Three most visible remaining flaws per bookmark
+
+**establishing**
+1. The sky above the cloud floor darkens abruptly toward the top right. Raising the HDRI's 13° sun to 32° tilts its zenith into view, and the cloud-floor horizon is a hard straight line.
+2. Far islands read as pale, flat shapes: the haze lifts them to nearly the horizon colour with no silhouette detail.
+3. The effect-driven fog banks and cloud step read as white discs from this height.
+
+**hero**
+1. Grass clumps are too small to read at gameplay distance, so the turf looks like a texture rather than a meadow.
+2. The fog bank still covers most of the island top, hiding the new materials under a flat white layer.
+3. The hiker is still a stylised primitive (capsule, sphere head) beside scanned surroundings.
+
+**closeup**
+1. The hiker and sheep are untextured primitives, the least consistent element at arm's length.
+2. The log's end cap is a flat disc without end-grain.
+3. Flowers are simple five-petal fans. They are fine in motion but read as cut-outs when still.
+
+**grazing**
+1. The beck surface reads bright white. At grazing angles the transmission surface reflects the bright horizon, and the fog volume sits over it.
+2. Stepping stones sit in a flat band of fog with a visible upper edge where the fog sheets meet.
+3. The rock scans are lit well, but the turf in front has no blade silhouettes at this angle.
+
+**phone-hero** (low tier)
+1. Without GTAO, contact between rocks, posts and turf is soft; things sit less firmly.
+2. The HUD's location card covers a large share of the upper frame at 390 px.
+3. The same large fog bank as the desktop hero dominates the island.
+
+### Budget
+
+- 15.1 MB of shipped assets in total, including 1.3 MB of audio (see `assets.manifest.json`). Textures are 1K WebP; models use meshopt.
+- In SwiftShader a high-tier frame at 1440 × 900 takes several seconds, and the low tier about one second at 400 × 300. SwiftShader is a CPU rasteriser, so these numbers say nothing about real GPUs. Real-hardware frame rates have not been measured in this environment.
