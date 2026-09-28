@@ -70,7 +70,7 @@ function scanMaterials(grass: Foliage, fern: Foliage) {
   if (!grassMat || !fernMat) {
     grassMat = prepare(grass.material.clone(), 1.2);
     // The scanned blades are lit flat and read paler than living grass; pull toward damp olive.
-    grassMat.color.setRGB(0.5, 0.56, 0.34);
+    grassMat.color.setRGB(0.34, 0.46, 0.2);
     fernMat = prepare(fern.material.clone(), 0.3);
     fernMat.color.setRGB(0.8, 0.85, 0.72);
   }
