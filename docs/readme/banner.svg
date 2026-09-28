@@ -22,7 +22,7 @@
 @keyframes gust{to{stroke-dashoffset:-136}}
 .haze{animation:haze 8s ease-in-out infinite}
 @keyframes haze{0%,100%{opacity:.55}50%{opacity:.8}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}.fog{opacity:1}}
+@media (prefers-reduced-motion:reduce){.drift,.drift2,.drift3,.fog,.rain,.wind,.curl,.drop,.gust,.haze{animation:none}.fog{opacity:1}}
 </style>
 <defs>
 <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7f98a2"/><stop offset=".55" stop-color="#d7d2bd"/><stop offset="1" stop-color="#b9c4b8"/></linearGradient>
