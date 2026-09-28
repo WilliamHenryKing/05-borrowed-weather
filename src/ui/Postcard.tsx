@@ -87,7 +87,14 @@ export function Postcard({
                   r={id === "shelter" ? 7 : 5}
                   fill={id === "shelter" ? "#ffb45e" : "#3b2e22"}
                 />
-                <text x={x + 9} y={y + 4} fontSize="9" fill="#3b2e22" fontFamily="Georgia, serif">
+                <text
+                  x={id === "shelter" ? x - 11 : x + 9}
+                  y={y + 4}
+                  textAnchor={id === "shelter" ? "end" : "start"}
+                  fontSize="9"
+                  fill="#3b2e22"
+                  fontFamily="Georgia, serif"
+                >
                   {LOCATION_INFO[id].name}
                 </text>
               </g>
