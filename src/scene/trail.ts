@@ -109,7 +109,7 @@ export class TrailScene {
       m.mat.color.set(lit ? "#ffe1ad" : "#6a6a60");
     }
     const animate = !instant && prev !== null && prev.at === next.at;
-    this.walker.jar.set(next.jar, animate);
+    this.walker.jar.set(next.jar, animate, this.calm);
     const kind = next.jar ?? prev?.jar;
     if (animate && kind && prev.jar !== next.jar) {
       const centre = this.stopOf(next.at).root.position;

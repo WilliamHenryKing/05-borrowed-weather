@@ -95,7 +95,7 @@ export class Jar {
   }
 
   /** Change the contents; `animate` plays the capture or release gulp. */
-  set(kind: Weather | null, animate: boolean): void {
+  set(kind: Weather | null, animate: boolean, calm = false): void {
     if (kind === this.kind) return;
     const capture = kind !== null;
     this.kind = kind ?? this.kind;
@@ -118,6 +118,7 @@ export class Jar {
         this.show(kind);
       },
     });
+    if (calm) return;
     gsap.fromTo(
       this.group.scale,
       { x: 1, y: 1, z: 1 },

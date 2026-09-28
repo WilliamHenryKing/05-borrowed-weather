@@ -1,5 +1,6 @@
 // Small hand-drawn SVG glyphs: weather marks, the jar and notebook sketches.
 
+import { useId } from "react";
 import type { Discovery } from "../game/notebook";
 import type { Weather } from "../game/world";
 
@@ -47,28 +48,63 @@ export function SoundGlyph({ muted }: { muted: boolean }) {
 const JAR_FILL: Record<Weather, string> = { fog: "#dfe6e4", rain: "#8fc0dc", wind: "#e8dca0" };
 
 /** The jar, with a swatch of whatever weather it holds and a little condensation. */
+const BODY = "M13 10h20v4c5 2 7 6 7 11v21c0 4-3 7-7 7H13c-4 0-7-3-7-7V25c0-5 2-9 7-11z";
+
+/** The jar, showing what swirls inside it; it gulps whenever its contents change. */
 export function Jar({ holding }: { holding: Weather | null }) {
+  const clip = useId();
   return (
-    <svg width="46" height="56" viewBox="0 0 46 56" aria-hidden="true">
+    <svg
+      key={holding ?? "empty"}
+      className="jar-gulp"
+      width="46"
+      height="56"
+      viewBox="0 0 46 56"
+      aria-hidden="true"
+    >
+      <defs>
+        <clipPath id={clip}>
+          <path d={BODY} />
+        </clipPath>
+      </defs>
       <rect x="11" y="3" width="24" height="7" rx="2" fill="#b58a45" />
-      <path
-        d="M13 10h20v4c5 2 7 6 7 11v21c0 4-3 7-7 7H13c-4 0-7-3-7-7V25c0-5 2-9 7-11z"
-        fill="rgb(230 242 240 / 0.18)"
-        stroke="#e8f0ee"
-        strokeWidth="1.6"
-      />
-      {holding && (
-        <g>
-          <path
-            d="M8 30c0-3 2-6 5-7h20c3 1 5 4 5 7v16c0 3-2 5-5 5H13c-3 0-5-2-5-5z"
-            fill={JAR_FILL[holding]}
-            opacity="0.85"
-          />
-          <g transform="translate(11 26)" color="#2b3826">
-            <WeatherGlyph kind={holding} size={24} />
+      <path d={BODY} fill="rgb(230 242 240 / 0.18)" />
+      <g clipPath={`url(#${clip})`}>
+        {holding === "fog" && (
+          <g className="jar-swirl" fill={JAR_FILL.fog}>
+            <ellipse cx="17" cy="36" rx="9" ry="5" opacity="0.8" />
+            <ellipse cx="29" cy="32" rx="10" ry="6" opacity="0.7" />
+            <ellipse cx="23" cy="44" rx="12" ry="5" opacity="0.9" />
+            <ellipse cx="24" cy="26" rx="7" ry="3.5" opacity="0.55" />
           </g>
-        </g>
-      )}
+        )}
+        {holding === "rain" && (
+          <g fill={JAR_FILL.rain}>
+            <rect x="6" y="45" width="34" height="9" opacity="0.9" />
+            {[12, 18, 24, 30, 35].map((x, i) => (
+              <path
+                key={x}
+                className="jar-drop"
+                style={{ animationDelay: `${i * 0.23}s` }}
+                d={`M${x} 18q2 3 0 5q-2-2 0-5z`}
+              />
+            ))}
+          </g>
+        )}
+        {holding === "wind" && (
+          <g fill="none" stroke={JAR_FILL.wind} strokeWidth="2" strokeLinecap="round">
+            {["M6 26q9-5 17 0t17 0", "M6 36q9 5 17 0t17 0", "M6 46q9-5 17 0t17 0"].map((d, i) => (
+              <path
+                key={d}
+                className="jar-streak"
+                style={{ animationDelay: `${i * 0.3}s` }}
+                d={d}
+              />
+            ))}
+          </g>
+        )}
+      </g>
+      <path d={BODY} fill="none" stroke="#e8f0ee" strokeWidth="1.6" />
       <g fill="#ffffff" opacity="0.7">
         <circle cx="12" cy="22" r="1" />
         <circle cx="35" cy="28" r="0.8" />
