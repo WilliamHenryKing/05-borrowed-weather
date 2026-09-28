@@ -6,7 +6,7 @@ import type { DioramaParts } from "./diorama";
 import { FogVolume } from "./fog";
 import { mesh, rng, solid } from "./kit";
 import { boulder, flowers, grass, log, pebbles, plinth, post, sheep, stone, wood } from "./props";
-import { water } from "./water";
+import { channelRibbon, water } from "./water";
 
 export function gate(radius: number, seed: number): DioramaParts {
   const group = plinth(radius, 1.6, seed);
@@ -86,25 +86,49 @@ export function gate(radius: number, seed: number): DioramaParts {
   };
 }
 
+/** The beck's course across the ford: a gentle meander and a width that breathes. */
+const beckX = (z: number) => 0.1 * Math.sin(z * 1.4 + 0.5) + 0.04 * Math.sin(z * 3.3);
+const beckHalf = (z: number) => 0.4 + 0.07 * Math.sin(z * 2.2 + 1.3);
+const smooth = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
 export function ford(radius: number, seed: number): DioramaParts {
-  const group = plinth(radius, 1.4, seed);
+  // The beck has cut its own bed: sloping banks, and a damp band where it meets the turf.
+  const group = plinth(radius, 1.4, seed, (x, z) => {
+    const d = Math.abs(x - beckX(z));
+    const h = beckHalf(z);
+    const rim = 1 - smooth(radius * 0.8, radius * 0.9, Math.hypot(x, z));
+    return {
+      depth: 0.11 * smooth(h + 0.16, h - 0.05, d) * rim,
+      wet: smooth(h + 0.38, h + 0.02, d) * rim,
+    };
+  });
+  const span = radius * 0.88;
   group.add(
     grass(radius, 200, seed, [
       { x: 0, z: 0, r: 0.75 },
-      { x: 1.2, z: 0, r: 0.7 },
-      { x: -1.2, z: 0, r: 0.7 },
+      { x: 0.08, z: 1.2, r: 0.75 },
+      { x: 0.05, z: -1.2, r: 0.75 },
     ]),
   );
-  // The beck: a band of dark, glossy water crossing the plinth.
-  const bed = mesh(new THREE.BoxGeometry(1.0, 0.04, radius * 2 - 0.25), pebbles([1, 4]), "receive");
-  bed.position.y = 0.01;
-  const beck = water(1.0, radius * 2 - 0.25, false, 1);
+  const bed = mesh(
+    channelRibbon(-span, span, beckX, (z) => beckHalf(z) - 0.02),
+    pebbles([1, 4]),
+    "receive",
+  );
+  bed.rotation.x = -Math.PI / 2;
+  bed.position.y = -0.085;
+  const beck = water(1.0, span * 2, false, 1, channelRibbon(-span, span, beckX, beckHalf));
   group.add(bed, beck.mesh);
+  // Stones along both banks, half sunk, some in the shallows.
   const r = rng(seed + 5);
-  for (let i = 0; i < 12; i++) {
-    const bank = stone(0.16 + r() * 0.1, seed + 30 + i, 0.8);
+  for (let i = 0; i < 16; i++) {
+    const z = -span + ((i + r()) / 16) * span * 2;
     const side = i % 2 === 0 ? -1 : 1;
-    bank.position.set(side * (0.55 + r() * 0.15), 0.02, (r() - 0.5) * radius * 1.8);
+    const bank = stone(0.12 + r() * 0.1, seed + 30 + i, 0.8);
+    bank.position.set(beckX(z) + side * (beckHalf(z) + 0.02 - r() * 0.12), -0.05, z);
     group.add(bank);
   }
   // Stepping stones, only visible with the fog bottled.
@@ -120,7 +144,7 @@ export function ford(radius: number, seed: number): DioramaParts {
     const k = 0.2 / scan.radius;
     s.scale.set(k, k * 0.45, k);
     s.rotation.y = i * 1.9;
-    s.position.set(-0.75 + i * 0.5, 0.06, 0.25 + Math.sin(i * 1.7) * 0.18);
+    s.position.set(beckX(0.25) - 0.6 + i * 0.4, -0.06, 0.25 + Math.sin(i * 1.7) * 0.12);
     stones.push(s);
     group.add(s);
   }
@@ -131,12 +155,12 @@ export function ford(radius: number, seed: number): DioramaParts {
     fogSpread: 1.9,
     update(_dt, time, calm, lv) {
       beck.update(time, lv.rain);
-      beck.mesh.position.y = 0.05 + lv.rain * 0.07;
+      beck.mesh.position.y = -0.035 + lv.rain * 0.05;
       const shown = 1 - lv.fog;
       stoneMat.opacity = shown;
       stones.forEach((s, i) => {
         s.visible = shown > 0.02;
-        s.position.y = -0.1 + shown * 0.16 + (calm ? 0 : Math.sin(time * 1.3 + i) * 0.006);
+        s.position.y = -0.14 + shown * 0.12 + (calm ? 0 : Math.sin(time * 1.3 + i) * 0.006);
       });
     },
   };

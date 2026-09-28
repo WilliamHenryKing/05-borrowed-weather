@@ -12,17 +12,27 @@ import { terrainMaterial } from "./terrain";
  * underside that tapers to a ragged tip. Noise displaces the sides; the top stays level so props
  * sit on it. Vertex colours: baked occlusion (R), per-island variation (G), rim nearness (B).
  */
-export function plinth(radius: number, depth: number, seed: number): THREE.Group {
+/**
+ * Where water has cut into a plinth's turf: `depth` below the surface (0 elsewhere) and `wet`
+ * (0–1), the damp band along the banks.
+ */
+export type Carve = (x: number, z: number) => { depth: number; wet: number };
+
+export function plinth(radius: number, depth: number, seed: number, carve?: Carve): THREE.Group {
   const group = new THREE.Group();
   const r = rng(seed);
-  const profile: THREE.Vector2[] = [
-    new THREE.Vector2(0.001, 0.02),
-    new THREE.Vector2(radius * 0.5, 0.015),
-    new THREE.Vector2(radius * 0.88, 0.0),
+  // Dense rings across the top so water can carve natural banks into it.
+  const profile: THREE.Vector2[] = [new THREE.Vector2(0.001, 0.02)];
+  for (let i = 1; i <= 22; i++) {
+    const t = i / 22;
+    profile.push(new THREE.Vector2(radius * 0.86 * t, 0.02 - 0.02 * t * t));
+  }
+  profile.push(
+    new THREE.Vector2(radius * 0.93, -0.01),
     new THREE.Vector2(radius * 0.97, -0.05),
     new THREE.Vector2(radius, -0.14),
     new THREE.Vector2(radius * 0.98, -0.3),
-  ];
+  );
   const steps = 9;
   for (let i = 1; i <= steps; i++) {
     const t = i / steps;
@@ -30,12 +40,12 @@ export function plinth(radius: number, depth: number, seed: number): THREE.Group
     profile.push(new THREE.Vector2(Math.max(0.05, w), -0.3 - (depth - 0.3) * t));
   }
   profile.push(new THREE.Vector2(0.001, -depth - 0.2));
-  const lathe = new THREE.LatheGeometry(profile, 72);
+  const lathe = new THREE.LatheGeometry(profile, carve ? 128 : 72);
   lathe.deleteAttribute("uv");
   lathe.deleteAttribute("normal");
   const geo = mergeVertices(lathe, 1e-4);
   const pos = geo.getAttribute("position") as THREE.BufferAttribute;
-  const colors = new Float32Array(pos.count * 3);
+  const colors = new Float32Array(pos.count * 4);
   const p = new THREE.Vector3();
   const variation = 0.35 + r() * 0.3;
   for (let i = 0; i < pos.count; i++) {
@@ -49,13 +59,16 @@ export function plinth(radius: number, depth: number, seed: number): THREE.Group
     p.x += (p.x / len) * push;
     p.z += (p.z / len) * push;
     p.y += side * (n2 - 0.5) * 0.2 + (1 - side) * (n2 - 0.5) * 0.015;
+    const cut = carve && below < 0.05 ? carve(p.x, p.z) : { depth: 0, wet: 0 };
+    p.y -= cut.depth;
     pos.setXYZ(i, p.x, p.y, p.z);
     const ao = 1 - Math.min(0.5, (below / depth) * 0.45) - Math.max(0, 0.5 - n) * 0.35 * side;
-    colors[i * 3] = ao;
-    colors[i * 3 + 1] = variation + (n - 0.5) * 0.3;
-    colors[i * 3 + 2] = 1 - Math.min(1, below / 0.55);
+    colors[i * 4] = ao - cut.wet * 0.15;
+    colors[i * 4 + 1] = variation + (n - 0.5) * 0.3;
+    colors[i * 4 + 2] = 1 - Math.min(1, below / 0.55);
+    colors[i * 4 + 3] = cut.wet;
   }
-  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(colors, 4));
   geo.computeVertexNormals();
   const terrain = terrainMaterial(seed);
   const m = mesh(geo, terrain.material);

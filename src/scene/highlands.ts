@@ -92,14 +92,22 @@ export function terrace(radius: number, seed: number): DioramaParts {
 }
 
 export function tarn(radius: number, seed: number): DioramaParts {
-  const group = plinth(radius, 1.6, seed);
+  // The tarn sits in a basin it has worn into the turf, with a damp margin.
+  const group = plinth(radius, 1.6, seed, (x, z) => {
+    const d = Math.hypot(x - 0.2, z + 0.3);
+    const t = (a: number, b: number) => {
+      const k = Math.min(1, Math.max(0, (d - a) / (b - a)));
+      return k * k * (3 - 2 * k);
+    };
+    return { depth: 0.1 * t(1.72, 1.38), wet: t(1.98, 1.6) };
+  });
   group.add(grass(radius, 140, seed, [{ x: 0.2, z: -0.3, r: 1.6 }]));
   const bed = mesh(new THREE.CircleGeometry(1.5, 48), pebbles([3, 3]), "receive");
   bed.rotation.x = -Math.PI / 2;
-  bed.position.set(0.2, 0.025, -0.3);
+  bed.position.set(0.2, -0.085, -0.3);
   group.add(bed);
   const pool = water(3.1, 3.1, true, 0.15);
-  pool.mesh.position.set(0.2, 0.04, -0.3);
+  pool.mesh.position.set(0.2, -0.03, -0.3);
   group.add(pool.mesh);
   const jetty = mesh(new THREE.BoxGeometry(0.5, 0.06, 0.9), wood("planks", 1, [0.5, 0.9]));
   jetty.position.set(-0.6, 0.1, 1.0);
@@ -145,7 +153,7 @@ export function tarn(radius: number, seed: number): DioramaParts {
   for (let i = 0; i < 8; i++) {
     const s = stone(0.2 + r() * 0.12, seed + i, 0.7);
     const a = r() * Math.PI * 2;
-    s.position.set(0.2 + Math.cos(a) * 1.6, 0.02, -0.3 + Math.sin(a) * 1.6);
+    s.position.set(0.2 + Math.cos(a) * 1.58, -0.03, -0.3 + Math.sin(a) * 1.58);
     group.add(s);
   }
   let sailT = 0;
@@ -156,7 +164,7 @@ export function tarn(radius: number, seed: number): DioramaParts {
     fogSpread: 1.8,
     update(dt, time, calm, lv) {
       pool.update(time, lv.rain);
-      pool.mesh.position.y = 0.04 + lv.rain * 0.06;
+      pool.mesh.position.y = -0.03 + lv.rain * 0.05;
       const clear = 1 - lv.fog;
       const open = lv.wind * clear;
       bulbMat.opacity = clear;
@@ -166,7 +174,7 @@ export function tarn(radius: number, seed: number): DioramaParts {
       const t = (Math.sin(sailT * Math.PI - Math.PI / 2) + 1) / 2;
       ferry.position.set(
         -0.3 + t * 1.3,
-        0.06 + (calm ? 0 : Math.sin(time * 1.4) * 0.015),
+        -0.01 + (calm ? 0 : Math.sin(time * 1.4) * 0.015),
         0.6 - t * 2.0,
       );
       ferry.rotation.y = 0.6 + (calm ? 0 : Math.sin(time * 0.9) * 0.05);

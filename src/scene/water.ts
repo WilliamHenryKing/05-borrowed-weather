@@ -82,6 +82,21 @@ export interface Water {
 }
 
 let ripples: THREE.DataTexture | null = null;
+const surfaces: THREE.MeshPhysicalMaterial[] = [];
+
+/**
+ * The adaptive step's cheap water: no transmission pass, a tinted, slightly see-through surface
+ * that still reflects the sky.
+ */
+export function cheapWater(): void {
+  for (const m of surfaces) {
+    m.transmission = 0;
+    m.transparent = true;
+    m.opacity = 0.82;
+    m.color.set("#3f6a66");
+    m.needsUpdate = true;
+  }
+}
 
 /** A tileable ripple normal map: sums of waves whose frequencies are whole numbers per tile. */
 function rippleNormals(): THREE.DataTexture {
@@ -125,8 +140,50 @@ function rippleNormals(): THREE.DataTexture {
   return ripples;
 }
 
-/** A strip of flowing beck (`disc` false) or a still round tarn or puddle (`disc` true). */
-export function water(width: number, depth: number, disc: boolean, flow = 1): Water {
+/**
+ * A ribbon of water following a winding channel along z, built in the XY plane (water() lays
+ * it flat): `centre(z)` is the channel's x, `half(z)` its half-width. uv.x runs across.
+ */
+export function channelRibbon(
+  z0: number,
+  z1: number,
+  centre: (z: number) => number,
+  half: (z: number) => number,
+  steps = 48,
+): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const uv: number[] = [];
+  const index: number[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const z = z0 + ((z1 - z0) * i) / steps;
+    const c = centre(z);
+    const h = half(z);
+    pos.push(c - h, -z, 0, c + h, -z, 0);
+    uv.push(0, i / steps, 1, i / steps);
+    if (i < steps) {
+      const a = i * 2;
+      index.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(index);
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * A strip of flowing beck (`disc` false) or a still round tarn or puddle (`disc` true).
+ * `shape` replaces the default plane or disc (for example a channelRibbon).
+ */
+export function water(
+  width: number,
+  depth: number,
+  disc: boolean,
+  flow = 1,
+  shape?: THREE.BufferGeometry,
+): Water {
   const mat = new THREE.ShaderMaterial({
     vertexShader: VERT,
     fragmentShader: FRAG,
@@ -146,16 +203,18 @@ export function water(width: number, depth: number, disc: boolean, flow = 1): Wa
       },
     ]),
   });
-  const overlay = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), mat);
+  const overlay = new THREE.Mesh(shape ?? new THREE.PlaneGeometry(width, depth), mat);
   overlay.rotation.x = -Math.PI / 2;
   overlay.position.y = 0.004;
   overlay.renderOrder = 2;
   const normals = rippleNormals().clone();
   normals.repeat.set(width * 1.2, depth * 1.2);
   normals.needsUpdate = true;
-  const surfaceGeo = disc
-    ? new THREE.CircleGeometry(Math.min(width, depth) / 2, 48)
-    : new THREE.PlaneGeometry(width, depth);
+  const surfaceGeo = shape
+    ? shape
+    : disc
+      ? new THREE.CircleGeometry(Math.min(width, depth) / 2, 48)
+      : new THREE.PlaneGeometry(width, depth);
   const surface = new THREE.Mesh(
     surfaceGeo,
     new THREE.MeshPhysicalMaterial({
@@ -174,6 +233,7 @@ export function water(width: number, depth: number, disc: boolean, flow = 1): Wa
   );
   surface.rotation.x = -Math.PI / 2;
   surface.receiveShadow = true;
+  surfaces.push(surface.material);
   const group = new THREE.Group();
   group.add(surface, overlay);
   const u = mat.uniforms as Record<string, THREE.IUniform<number>>;
