@@ -102,3 +102,53 @@ Before → after: establishing 2.1 → 2.9, hero 2.4 → 3.0, closeup 1.6 → 2.
 
 - 15.1 MB of shipped assets in total, including 1.3 MB of audio (see `assets.manifest.json`). Textures are 1K WebP; models use meshopt.
 - In SwiftShader a high-tier frame at 1440 × 900 takes several seconds, and the low tier about one second at 400 × 300. SwiftShader is a CPU rasteriser, so these numbers say nothing about real GPUs. Real-hardware frame rates have not been measured in this environment.
+
+## Round 2: warmth, contrast and a natural beck (`docs/visual/captures/round2/`)
+
+Review on a real GPU (RTX 2060) found the first pass washed-out grey, with the golden light gone and the islands not separating from the cloud sea. Changes:
+- The HDRI keeps its own low, warm sun (about 13°) and is only turned about the vertical, so light rakes in from the camera's right.
+- Aerial perspective starts beyond ~12 units.
+- Rock keeps the scan's ochre.
+- The cloud sea is cooler and less reflective.
+- A restrained linear grade (saturation 1.18, soft vignette) sits before OutputPass.
+- The beck and tarn are carved into the turf with damp margins and bank stones.
+
+### Target luminance relationships
+
+Values are display luma (Rec. 709 weights on the final sRGB frame, 0–1) and HSV-style saturation, measured by region on the captures:
+
+| Surface | Target luma | Target saturation | Round 2 measured |
+| --- | --- | --- | --- |
+| Sunlit turf (hero, phone) | 0.30–0.60 | ≥ 0.40 | 0.34–0.60 luma, 0.45–0.63 sat |
+| Sunlit rock sides | 0.30–0.45 | ≥ 0.40 | 0.36 luma, 0.53 sat |
+| Cloud sea | 0.65–0.80, never clipped | ≤ 0.10 (cool, near neutral) | 0.65–0.77 luma, 0.04–0.05 sat |
+| Fog banks and cloud step | ≤ 0.90 | ≈ 0 | 0.86 luma |
+| Sky near horizon | 0.70–0.85 | ≤ 0.15 | 0.78 luma, 0.06 sat |
+
+Rules that keep the islands popping:
+1. Any island surface in the play area sits at least 0.15 luma below the cloud sea behind it, or carries at least 5× its saturation. Warm, saturated land against cool, near-neutral cloud separates by chroma even where values meet.
+2. Haze never lifts play-area surfaces: aerial perspective only acts beyond ~12 units.
+3. Only fog, cloud and glints go above 0.85. Nothing is clipped to white except the sun's specular glints.
+
+### Scores (1–5)
+
+| Bookmark | Baseline | Pass 1 | Round 2 |
+| --- | --- | --- | --- |
+| establishing | 2.1 | 2.9 | 3.2 |
+| hero | 2.4 | 3.0 | 3.4 |
+| closeup | 1.6 | 2.9 | 3.1 |
+| grazing | 1.8 | 2.6 | 3.0 |
+| phone-hero | 2.4 | 3.0 | 3.3 |
+
+Round 2 moves light plausibility, atmosphere and composition up by about a point in the hero and phone views: warm key, readable separation, crisp play area. The beck reads as a cut channel with sloping banks and a damp margin rather than a trough.
+
+### Remaining flaws (round 2)
+- **establishing:** far islands are still pale, simple shapes; fog banks read as white discs from above; the cloud sea's texture repeats faintly at the horizon.
+- **hero:** the fog bank covers the new beck until it is bottled; the hiker is a stylised primitive; grass clumps are small against the turf at this distance.
+- **closeup:** hiker and sheep are primitives; the log's end is a flat disc; flower heads are simple fans.
+- **grazing:** the water surface under fog reads bright; there is a visible band where the fog sheets meet the bank; the stepping stones sink into fog.
+- **phone-hero** (low tier): no GTAO, so contact is soft; the HUD card covers the upper frame; small specular sparkles on grass tips at the fog edge.
+
+### Performance (real GPU figures from the review; SwiftShader here is not representative)
+- The high tier ran at about 76 fps on an RTX 2060 and the phone tier at about 130 before round 2. Round 2 adds an adaptive step: if the smoothed frame time stays over 16.7 ms for about 2 s, GTAO is dropped and the water switches from the transmission pass to a cheap tinted surface. The step is one-way.
+- Arrival: only the 1K sky (1.4 MB), the three terrain sets and the rock scans block the veil. The 2K sky, wood and pebble sets and the foliage scans stream in afterwards. The review measured the loader at 5.7 s desktop and 2.6 s phone; this should now be shorter, but it has not been re-measured on real hardware.
