@@ -45,7 +45,9 @@ Round 2 answers the real-GPU review:
   - Planks and bark on all joinery.
   - A physical transmission water surface over pebble beds.
 - **Detail.** Instanced grass clumps and ferns (alpha-to-coverage, wind) and procedural wildflowers, all with scale, rotation and tone jitter.
-- **README media.** `desktop.png`, `phone.png` and `preview.gif` are rendering from the round-2 build (disposal "none"; frames to be decoded and checked) and land in a follow-up commit.
+- **README media.** `desktop.png` (1440 × 900), `phone.png` (390 × 844 at 2×) and `preview.gif` re-rendered from the round-2 production build.
+  - The GIF is 800 × 500, 80 frames at 10 fps, 2.1 MB, 160 colours. Every frame uses disposal "none" (keep previous frame), and pixels that are unchanged, or nearly so, are transparent.
+  - I decoded frames 40 and 79 in Chromium: both are complete, fully opaque 800 × 500 pictures.
 - **Round 2.**
   - Warm low sun, true to the HDRI's elevation.
   - Haze-free play area and a restrained grade.
