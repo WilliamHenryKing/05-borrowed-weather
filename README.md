@@ -43,7 +43,7 @@ There is no timer and no fail state: every take can be undone by releasing it wh
 
 ## What's inside
 
-- **Six hand-built dioramas** climbing from a sheep gate to a lantern shelter above a cloud sea, each one procedural down to the last stone, sheep and fern.
+- **Six hand-built dioramas** climbing from a sheep gate to a lantern shelter above a cloud sea, built from scanned CC0 rock, turf, wood and grass under one real sky.
 - **Two consequences per borrow:** the vane lift stops when its breeze is in your jar, so the route needs a real plan, not a straight walk.
 - **Weather that looks like weather:** layered noise fog that veils the crossing, living water with foam and rain rings, a swirl that pours each pocket into and out of the jar.
 - **A hint that never lies:** it runs a solver over the live puzzle and names the next take or release that matters, and what it will change.
@@ -64,9 +64,10 @@ There is no timer and no fail state: every take can be undone by releasing it wh
 
 ## Built with
 
-three.js 0.186 (no React Three Fiber), React 19, strict TypeScript, Vite, GSAP, Tailwind CSS 4, Biome and Bun, with Playwright for the end-to-end walk. Everything you see is generated in code; there are no image or model assets.
+three.js 0.186 (no React Three Fiber), React 19, strict TypeScript, Vite, GSAP, Tailwind CSS 4, Biome and Bun, with Playwright for the end-to-end walk. The world is lit by one CC0 sky and built from scanned CC0 rock, turf, wood and foliage, with the islands, fog, water and effects authored in code.
 
 - **Weather routing solver.** The rules are pure TypeScript. A breadth-first search over all 37,000 reachable puzzle states proves in the tests that the trail can be finished from every one of them (no dead ends) and that every borrow can be undone. The same search powers the in-game hint.
+- **One lighting model.** A CC0 HDRI is both the visible sky and the image-based light. Its sun is measured out of the image (direction, illuminance, colour), removed from the lighting copy so it is not counted twice, and handed to the key light. The post chain is GTAO, thresholded bloom, SMAA, then AgX once; exposure is the only brightness control.
 - **Layered fog.** Each bank is a stack of horizontal sheets running an fbm noise shader, dense in the middle and feathered at the edges, with noisy billboards for side volume. Its level sinks and thins the bank as you bottle it.
 - **Weather-aware sound mix.** A pure function maps where you stand to rain, wind, river and bird beds, and adds a low-pass filter while fog is present. Web Audio glides between mixes, and nothing loads until your first gesture.
 
@@ -83,7 +84,24 @@ The rules live in `src/game/` (tested in `tests/`), the three.js scene in `src/s
 
 ## Credits
 
-All geometry, textures, icons and visual effects are generated in code for this project.
+Every shipped third-party file is recorded, with its source URL, author, licence, retrieval date, checksums and processing steps, in [`assets.manifest.json`](assets.manifest.json).
+
+Visuals are all CC0 from [Poly Haven](https://polyhaven.com), resized and re-encoded as WebP (textures) or through gltf-transform with meshopt (models):
+
+| Asset | Source | Author | Licence | Used for |
+| --- | --- | --- | --- | --- |
+| Table Mountain 1 (Pure Sky) HDRI | https://polyhaven.com/a/table_mountain_1_puresky | Greg Zaal, Jarod Guest | CC0 | Sky, image-based light, sun |
+| Cliff Side | https://polyhaven.com/a/cliff_side | Poly Haven | CC0 | Island rock |
+| Mossy Rock | https://polyhaven.com/a/mossy_rock | Poly Haven | CC0 | Moss, shelter masonry |
+| Grass Ground | https://polyhaven.com/a/grass_ground | Poly Haven | CC0 | Turf, shelter roof |
+| River Small Rocks | https://polyhaven.com/a/river_small_rocks | Poly Haven | CC0 | Beck and tarn beds |
+| Weathered Planks | https://polyhaven.com/a/weathered_planks | Poly Haven | CC0 | Gate, posts, jetty, signs |
+| Bark Brown 02 | https://polyhaven.com/a/bark_brown_02 | Poly Haven | CC0 | Logs, lift basket |
+| Rock Moss Set 01 and 02 | https://polyhaven.com/a/rock_moss_set_01, https://polyhaven.com/a/rock_moss_set_02 | Poly Haven | CC0 | Walls, cairns, banks, stepping stones |
+| Boulder 01 | https://polyhaven.com/a/boulder_01 | Poly Haven | CC0 | Hollow ledge, terrace cliff |
+| Grass Medium 02, Fern 02 | https://polyhaven.com/a/grass_medium_02, https://polyhaven.com/a/fern_02 | Poly Haven (processed for ODD TIDE) | CC0 | Grass and ferns |
+
+The islands, fog, water, clouds, jar, hiker, sheep, instruments and icons are generated in code. The post-processing chain, foliage wind and terrain shading are adapted from the ODD TIDE project in the same portfolio collection.
 
 Audio is all CC0 (public domain). It was converted to mono OGG Vorbis, trimmed and crossfaded into loops, about 1.3 MB in total, in `public/audio/`:
 
