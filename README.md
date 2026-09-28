@@ -1,51 +1,91 @@
-# BORROWED WEATHER
+<div align="center">
 
-A cosy hiking puzzle adventure with a jar full of weather.
+<img src="docs/readme/banner.svg" alt="Borrowed Weather: a glass jar in which fog curls, rain drips and a gust streaks, beside the title" width="100%" />
 
-**Status:** v1 is playable from start to finish. Six procedural trail dioramas climb from a sheep gate to a lantern shelter above the clouds. There is one jar and three kinds of weather (fog, rain, wind), a field notebook of discoveries, a hint that never lies, and a postcard of your route at the end. The rules are pure TypeScript, and the tests search the whole state space: they prove the trail can be finished from every reachable state (no dead ends) and that every borrowing can be undone. Everything runs locally; there are no network calls.
+<br />
+
+[![Play it live](https://img.shields.io/badge/Play_it_live-ffb45e?style=for-the-badge&logo=googlechrome&logoColor=2b3826&labelColor=2b3826&color=ffb45e)](https://05-borrowed-weather.williamking.workers.dev)
+![three.js](https://img.shields.io/badge/three.js_0.186-ffb45e?style=for-the-badge&logo=threedotjs&logoColor=2b3826)
+![React](https://img.shields.io/badge/React_19-ffb45e?style=for-the-badge&logo=react&logoColor=2b3826)
+![TypeScript](https://img.shields.io/badge/TypeScript-ffb45e?style=for-the-badge&logo=typescript&logoColor=2b3826)
+![Vite](https://img.shields.io/badge/Vite-ffb45e?style=for-the-badge&logo=vite&logoColor=2b3826)
+![GSAP](https://img.shields.io/badge/GSAP-ffb45e?style=for-the-badge&logo=greensock&logoColor=2b3826)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_4-ffb45e?style=for-the-badge&logo=tailwindcss&logoColor=2b3826)
+![Bun](https://img.shields.io/badge/Bun-ffb45e?style=for-the-badge&logo=bun&logoColor=2b3826)
+
+**Carry one glass jar up a misty mountain trail: every pocket of weather you borrow changes the place you took it from and the place you let it go.**
+
+<img src="docs/readme/preview.gif" alt="Taking the fog at Fog Ford: wisps swirl into the jar, the stepping stones appear, the hiker crosses and releases the fog into Cairn Hollow, where it gathers into a cloud step" width="800" />
+
+</div>
 
 ## How to play
 
-You carry one glass jar. It holds a single pocket of fog, rain or wind.
+Take weather and the place changes. Release it somewhere else and that place changes too. The jar holds one kind at a time, so order matters. Reach the Lantern Shelter above the clouds and wake its three instruments.
 
-- **Take** weather and the place you took it from changes.
-- **Release** it and the place you release it changes.
-- Walk by tapping or clicking a diorama, the trail dots, or the ← → buttons. You can walk to any diorama whose paths are open.
-
-The rules, each noted in your notebook the first time you see it:
-
-| Weather | What it does |
+| Weather | What it does on the trail |
 | --- | --- |
-| Fog | Hides the stepping stones at the ford and the ferry lane on the tarn. Released in the marked hollow, it gathers into a cloud step you can stand on. |
-| Wind | Turns the terrace vane, which runs the basket lift. On the tarn it fills the leaf ferry's sail. |
-| Rain | Uncurls the terrace ferns into a stair. |
+| Fog | Hides the ford's stepping stones and the tarn's ferry lane. Released in the marked hollow, it gathers into a cloud step. |
+| Rain | Uncurls the terrace ferns into a stair, raises the water and fills the rain gauge. |
+| Wind | Turns the vane that runs the basket lift, and fills the leaf ferry's sail. |
 
-Reach the Lantern Shelter and release each kind of weather beside its instrument (cloud glass, rain gauge, wind vane) to wake it. Order matters: whatever you borrow stops working where it was.
+| Action | Keyboard | Mouse and touch |
+| --- | --- | --- |
+| Walk | <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd> | Tap a diorama, a trail dot, or the ← → buttons |
+| Take fog, rain or wind | <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> | **Take** buttons |
+| Release what the jar holds | <kbd>R</kbd> | **Release** button |
+| Hint | <kbd>H</kbd> | **Hint** |
+| Field notebook | <kbd>N</kbd> | **Notebook** (sit on a log to read) |
+| Mute or unmute | <kbd>M</kbd> | Speaker button |
+| Close a panel | <kbd>Esc</kbd> | **Back to the trail** |
 
-**Keys:** ← → or A D to walk · 1 fog · 2 rain · 3 wind (take) · R release · H hint · N notebook · M mute · Esc to close panels.
+There is no timer and no fail state: every take can be undone by releasing it where it came from.
 
-**Sound:** gentle music, footsteps, jar clinks, notebook pages and chimes. The ambience follows the weather where you stand: rain patters where there is rain, wind blows where there is wind, the beck runs at the ford, and fog muffles everything. Audio loads and starts only after your first tap or key press. The mute button (or M) is remembered between visits. Audio pauses while the tab is hidden, and the music dips while the notebook or postcard is open.
+## What's inside
 
-There is no timer. If you get stuck, **Hint** points to the next take or release that matters and says what it will change.
+- **Six hand-built dioramas** climbing from a sheep gate to a lantern shelter above a cloud sea, each one procedural down to the last stone, sheep and fern.
+- **Two consequences per borrow:** the vane lift stops when its breeze is in your jar, so the route needs a real plan, not a straight walk.
+- **Weather that looks like weather:** layered noise fog that veils the crossing, living water with foam and rain rings, a swirl that pours each pocket into and out of the jar.
+- **A hint that never lies:** it runs a solver over the live puzzle and names the next take or release that matters, and what it will change.
+- **A field notebook** that records each rule the first time you see it, and a **postcard** at the end that maps the route you actually took.
+- **Sound that follows the weather:** rain patters where there is rain, fog muffles the world, and the music settles when a panel opens.
+- **Plays anywhere:** desktop and phone layouts, mouse, touch and keyboard, visible focus, and `prefers-reduced-motion` respected throughout.
 
-## Development
+<table>
+  <tr>
+    <td width="72%"><img src="docs/readme/desktop.png" alt="Desktop: the fog at Fog Ford veiling the beck, with the next islands drifting in warm haze" /></td>
+    <td width="28%"><img src="docs/readme/phone.png" alt="Phone: Wool Gate with its sheep, the trail HUD and the jar" /></td>
+  </tr>
+  <tr>
+    <td align="center">Desktop, 1440 × 900</td>
+    <td align="center">Phone, 390 × 844</td>
+  </tr>
+</table>
+
+## Built with
+
+three.js 0.186 (no React Three Fiber), React 19, strict TypeScript, Vite, GSAP, Tailwind CSS 4, Biome and Bun, with Playwright for the end-to-end walk. Everything you see is generated in code; there are no image or model assets.
+
+- **Weather routing solver.** The rules are pure TypeScript. A breadth-first search over all 37,000 reachable puzzle states proves in the tests that the trail can be finished from every one of them (no dead ends) and that every borrow can be undone. The same search powers the in-game hint.
+- **Layered fog.** Each bank is a stack of horizontal sheets running an fbm noise shader, dense in the middle and feathered at the edges, with noisy billboards for side volume. Its level sinks and thins the bank as you bottle it.
+- **Weather-aware sound mix.** A pure function maps where you stand to rain, wind, river and bird beds, and adds a low-pass filter while fog is present. Web Audio glides between mixes, and nothing loads until your first gesture.
+
+## Run it locally
 
 ```sh
-bun install --frozen-lockfile
+bun install
 bun run dev      # http://127.0.0.1:4515/
-bun run check    # tsc, Biome, bun test, production build into dist/
-bun run e2e      # Playwright: walks the whole trail to the shelter in headless Chromium
+bun run check    # strict tsc, Biome, bun test, production build into dist/
+bun run e2e      # optional: Playwright walks the whole trail in headless Chromium
 ```
 
-The end-to-end test builds and serves the app on port 4615, then plays the solver's route with the keyboard, checking the HUD after every step. It needs a Playwright Chromium (`bunx playwright install chromium` on a fresh machine). SwiftShader is fine.
-
-Code layout: `src/game/` holds the pure rules, notebook and solver (tested in `tests/`). `src/scene/` holds the three.js dioramas, shader fog and water, sky and backdrop, the jar and camera. `src/audio/` holds the sound board and its pure mixing rules. `src/ui/` holds the React HUD and panels. `src/main.tsx` wires them together. `development/` and `tools/studio/` are earlier tooling and are not part of the app.
+The rules live in `src/game/` (tested in `tests/`), the three.js scene in `src/scene/`, sound in `src/audio/` and the React HUD in `src/ui/`. The end-to-end test needs a Playwright Chromium (`bunx playwright install chromium`).
 
 ## Credits
 
-All geometry, textures, icons and visual effects are generated in code for this project. Libraries: three.js, React, GSAP, Tailwind CSS.
+All geometry, textures, icons and visual effects are generated in code for this project.
 
-Audio (all CC0 / public domain; converted to mono OGG Vorbis, trimmed and crossfaded into loops, about 1.3 MB in total, in `public/audio/`):
+Audio is all CC0 (public domain). It was converted to mono OGG Vorbis, trimmed and crossfaded into loops, about 1.3 MB in total, in `public/audio/`:
 
 | File(s) | Source | Author | Licence |
 | --- | --- | --- | --- |
@@ -56,3 +96,5 @@ Audio (all CC0 / public domain; converted to mono OGG Vorbis, trimmed and crossf
 | `book-open.ogg`, `book-close.ogg`, `page.ogg` (bookOpen, bookClose, bookFlip2) | https://kenney.nl/assets/rpg-audio | Kenney (kenney.nl) | CC0 |
 | `click.ogg`, `hint.ogg`, `toggle.ogg` (click_002, question_002, toggle_001) | https://kenney.nl/assets/interface-sounds | Kenney (kenney.nl) | CC0 |
 | `blocked.ogg`, `discover.ogg`, `finish.ogg` (jingles_PIZZI04, 10, 02) | https://kenney.nl/assets/music-jingles | Kenney (kenney.nl) | CC0 |
+
+<p align="center"><sub>Part of William King's portfolio collection.</sub></p>
