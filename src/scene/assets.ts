@@ -26,8 +26,14 @@ export interface Assets {
   sets: Record<SetName, PbrSet>;
   rocks: Scan[];
   boulder: Scan;
-  grass: { variants: THREE.BufferGeometry[]; material: THREE.MeshStandardMaterial };
-  fern: { variants: THREE.BufferGeometry[]; material: THREE.MeshStandardMaterial };
+  /** Foliage arrives after the arrival veil lifts (see loadDeferred); null until then. */
+  grass: Foliage | null;
+  fern: Foliage | null;
+}
+
+export interface Foliage {
+  variants: THREE.BufferGeometry[];
+  material: THREE.MeshStandardMaterial;
 }
 
 const SETS = [
@@ -51,6 +57,46 @@ async function texture(url: string, colour: boolean, flipY = true): Promise<THRE
   t.flipY = flipY;
   t.needsUpdate = true;
   return t;
+}
+
+/** Sets needed for the first frame; the rest stream in behind placeholders. */
+const CRITICAL: readonly SetName[] = ["cliff_side", "mossy_rock", "grass_ground"];
+
+/**
+ * A 1×1 stand-in whose source is swapped for the real image when it arrives. Clones share
+ * the source, so tiled copies made by materials update too.
+ */
+function placeholder(rgb: [number, number, number], colour: boolean, url: string): THREE.Texture {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 1;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = `rgb(${rgb.join(",")})`;
+    ctx.fillRect(0, 0, 1, 1);
+  }
+  const t = new THREE.Texture(canvas);
+  t.colorSpace = colour ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 8;
+  t.needsUpdate = true;
+  deferredFills.push(async () => {
+    const real = await textureLoader.loadAsync(`${base}${url}`);
+    (t.source as { data: unknown }).data = real.image;
+    t.source.needsUpdate = true;
+    t.needsUpdate = true;
+  });
+  return t;
+}
+
+const deferredFills: (() => Promise<void>)[] = [];
+
+function deferredSet(name: SetName): PbrSet {
+  const path = `textures/${name}/${name}`;
+  return {
+    colour: placeholder([120, 108, 92], true, `${path}_diff_1k.webp`),
+    normal: placeholder([128, 128, 255], false, `${path}_nor_gl_1k.webp`),
+    arm: placeholder([255, 210, 0], false, `${path}_arm_1k.webp`),
+  };
 }
 
 async function pbrSet(name: SetName): Promise<PbrSet> {
@@ -99,36 +145,62 @@ function meshesOf(gltf: { scene: THREE.Object3D }): Scan[] {
   return out;
 }
 
+const gltf = new GLTFLoader();
+gltf.setMeshoptDecoder(MeshoptDecoder);
+const glb = (name: string) => gltf.loadAsync(`${base}models/${name}.glb`);
+const hdr = (size: string) =>
+  new HDRLoader()
+    .setDataType(THREE.HalfFloatType)
+    .loadAsync(`${base}env/table_mountain_1_puresky_${size}.hdr`);
+
+/** What the first frame needs: the 1K sky, terrain sets and the rock scans. */
 export async function loadAssets(): Promise<Assets> {
-  const gltf = new GLTFLoader();
-  gltf.setMeshoptDecoder(MeshoptDecoder);
-  const glb = (name: string) => gltf.loadAsync(`${base}models/${name}.glb`);
-  const [
-    sky,
-    sets,
-    rocksA,
-    rocksB,
-    boulder,
-    grassGlb,
-    fernGlb,
-    grassAlpha,
-    grassColour,
-    fernAlpha,
-  ] = await Promise.all([
-    new HDRLoader()
-      .setDataType(THREE.HalfFloatType)
-      .loadAsync(`${base}env/table_mountain_1_puresky_2k.hdr`),
-    Promise.all(SETS.map(pbrSet)),
+  const [sky, critical, rocksA, rocksB, boulder] = await Promise.all([
+    hdr("1k"),
+    Promise.all(CRITICAL.map(pbrSet)),
     glb("rock_moss_set_01"),
     glb("rock_moss_set_02"),
     glb("boulder_01"),
+  ]);
+  sky.mapping = THREE.EquirectangularReflectionMapping;
+  const boulderScan = meshesOf(boulder)[0];
+  if (!boulderScan) throw new Error("boulder_01 has no mesh");
+  const sets = {} as Record<SetName, PbrSet>;
+  for (const name of SETS) {
+    const i = CRITICAL.indexOf(name);
+    sets[name] = i >= 0 ? (critical[i] as PbrSet) : deferredSet(name);
+  }
+  return {
+    sky,
+    sets,
+    rocks: [...meshesOf(rocksA), ...meshesOf(rocksB)],
+    boulder: boulderScan,
+    grass: null,
+    fern: null,
+  };
+}
+
+const foliageWaiters: (() => void)[] = [];
+
+/** Run `build` once foliage has arrived (immediately if it already has). */
+export function whenFoliage(build: () => void): void {
+  if (current?.grass) build();
+  else foliageWaiters.push(build);
+}
+
+/**
+ * Everything the first frame can do without, loaded after the veil lifts: the 2K sky for the
+ * background, the wood and pebble sets, and the grass and fern scans.
+ */
+export async function loadDeferred(onSky: (sky: THREE.DataTexture) => void): Promise<void> {
+  const fills = Promise.all(deferredFills.splice(0).map((f) => f()));
+  const [grassGlb, fernGlb, grassAlpha, grassColour, fernAlpha] = await Promise.all([
     glb("grass_medium_02"),
     glb("fern_02"),
     texture("models/grass_medium_02_alpha_1k.webp", false, false),
     texture("models/grass_medium_02_diff_bled_1k.webp", true, false),
     texture("models/fern_02_alpha_1k.webp", false, false),
   ]);
-  sky.mapping = THREE.EquirectangularReflectionMapping;
   const grass = meshesOf(grassGlb);
   const fern = meshesOf(fernGlb);
   const grassMaterial = (grass[0]?.material ?? new THREE.MeshStandardMaterial()).clone();
@@ -136,16 +208,15 @@ export async function loadAssets(): Promise<Assets> {
   grassMaterial.alphaMap = grassAlpha;
   const fernMaterial = (fern[0]?.material ?? new THREE.MeshStandardMaterial()).clone();
   fernMaterial.alphaMap = fernAlpha;
-  const boulderScan = meshesOf(boulder)[0];
-  if (!boulderScan) throw new Error("boulder_01 has no mesh");
-  return {
-    sky,
-    sets: Object.fromEntries(SETS.map((n, i) => [n, sets[i] as PbrSet])) as Record<SetName, PbrSet>,
-    rocks: [...meshesOf(rocksA), ...meshesOf(rocksB)],
-    boulder: boulderScan,
-    grass: { variants: grass.map((g) => g.geometry), material: grassMaterial },
-    fern: { variants: fern.map((g) => g.geometry), material: fernMaterial },
-  };
+  if (current) {
+    current.grass = { variants: grass.map((g) => g.geometry), material: grassMaterial };
+    current.fern = { variants: fern.map((g) => g.geometry), material: fernMaterial };
+  }
+  for (const build of foliageWaiters.splice(0)) build();
+  await fills;
+  const sky = await hdr("2k");
+  sky.mapping = THREE.EquirectangularReflectionMapping;
+  onSky(sky);
 }
 
 let current: Assets | null = null;

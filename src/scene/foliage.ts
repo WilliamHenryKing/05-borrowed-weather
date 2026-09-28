@@ -4,7 +4,7 @@
 // foliage shading follows ODD TIDE's: wind bends each plant by height above its own origin.
 
 import * as THREE from "three";
-import { assets } from "./assets";
+import { assets, type Foliage, whenFoliage } from "./assets";
 import { rng } from "./kit";
 
 const wind = { time: { value: 0 }, strength: { value: 1 } };
@@ -65,23 +65,36 @@ let fernMat: THREE.MeshStandardMaterial | null = null;
 let stemMat: THREE.MeshStandardMaterial | null = null;
 let headMat: THREE.MeshStandardMaterial | null = null;
 
-function materials() {
-  if (!grassMat) {
-    const a = assets();
-    grassMat = prepare(a.grass.material.clone(), 1.2);
+/** Scan materials; only call once foliage has arrived (inside whenFoliage). */
+function scanMaterials(grass: Foliage, fern: Foliage) {
+  if (!grassMat || !fernMat) {
+    grassMat = prepare(grass.material.clone(), 1.2);
     // The scanned blades are lit flat and read paler than living grass; pull toward damp olive.
     grassMat.color.setRGB(0.5, 0.56, 0.34);
-    fernMat = prepare(a.fern.material.clone(), 0.3);
+    fernMat = prepare(fern.material.clone(), 0.3);
     fernMat.color.setRGB(0.8, 0.85, 0.72);
+  }
+  return { grass: grassMat, fern: fernMat };
+}
+
+function flowerMaterials() {
+  if (!stemMat || !headMat) {
     stemMat = prepare(new THREE.MeshStandardMaterial({ color: "#56703a", roughness: 0.8 }), 6);
     headMat = prepare(new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 0.6 }), 6);
   }
-  return {
-    grass: grassMat,
-    fern: fernMat as THREE.MeshStandardMaterial,
-    stem: stemMat as THREE.MeshStandardMaterial,
-    head: headMat as THREE.MeshStandardMaterial,
-  };
+  return { stem: stemMat, head: headMat };
+}
+
+/** Build into `group` once the foliage scans have streamed in. */
+function whenScans(
+  group: THREE.Group,
+  build: (grass: Foliage, fern: Foliage) => void,
+): THREE.Group {
+  whenFoliage(() => {
+    const { grass, fern } = assets();
+    if (grass && fern) build(grass, fern);
+  });
+  return group;
 }
 
 type Clear = { x: number; z: number; r: number }[];
@@ -136,35 +149,33 @@ export function grassField(
   seed: number,
   clear: Clear = [],
 ): THREE.Group {
-  const { grass } = assets();
-  const mats = materials();
   const group = new THREE.Group();
   const points = scatter(radius, Math.round(count * 1.6 * density), seed, clear);
-  // The three lightest clump variants (about 550–1,300 triangles each) carry the turf.
-  const light = [...grass.variants]
-    .sort((a, b) => (a.index?.count ?? 0) - (b.index?.count ?? 0))
-    .slice(0, 3);
-  const variants = light.length || 1;
-  light.forEach((geometry, v) => {
-    const bucket = points.filter((_, i) => i % variants === v);
-    if (bucket.length === 0) return;
-    group.add(
-      instance(
-        geometry,
-        mats.grass,
-        bucket,
-        1.25,
-        (t) => new THREE.Color(t, t * (1 + (t - 1) * 0.6), t * 0.95),
-      ),
-    );
+  return whenScans(group, (grass, fern) => {
+    const mats = scanMaterials(grass, fern);
+    // The three lightest clump variants (about 550–1,300 triangles each) carry the turf.
+    const light = [...grass.variants]
+      .sort((a, b) => (a.index?.count ?? 0) - (b.index?.count ?? 0))
+      .slice(0, 3);
+    const variants = light.length || 1;
+    light.forEach((geometry, v) => {
+      const bucket = points.filter((_, i) => i % variants === v);
+      if (bucket.length === 0) return;
+      group.add(
+        instance(
+          geometry,
+          mats.grass,
+          bucket,
+          1.25,
+          (t) => new THREE.Color(t, t * (1 + (t - 1) * 0.6), t * 0.95),
+        ),
+      );
+    });
   });
-  return group;
 }
 
 /** A few scanned ferns, tucked against rocks and cliffs. */
 export function ferns(spots: { x: number; z: number; s: number }[], seed: number): THREE.Group {
-  const { fern } = assets();
-  const mats = materials();
   const r = rng(seed);
   const group = new THREE.Group();
   const points = spots.map((p) => ({
@@ -174,13 +185,15 @@ export function ferns(spots: { x: number; z: number; s: number }[], seed: number
     scale: p.s * (0.8 + r() * 0.4),
     tone: 0.9 + r() * 0.2,
   }));
-  const variants = fern.variants.length || 1;
-  fern.variants.forEach((geometry, v) => {
-    const bucket = points.filter((_, i) => i % variants === v);
-    if (bucket.length)
-      group.add(instance(geometry, mats.fern, bucket, 0.5, (t) => new THREE.Color(t, t, t)));
+  return whenScans(group, (grass, fern) => {
+    const mats = scanMaterials(grass, fern);
+    const variants = fern.variants.length || 1;
+    fern.variants.forEach((geometry, v) => {
+      const bucket = points.filter((_, i) => i % variants === v);
+      if (bucket.length)
+        group.add(instance(geometry, mats.fern, bucket, 0.5, (t) => new THREE.Color(t, t, t)));
+    });
   });
-  return group;
 }
 
 const FLOWER_COLOURS = ["#f2d04b", "#f4efe2", "#b77bb8", "#e9a1b0", "#9fb4e8"].map(
@@ -189,7 +202,7 @@ const FLOWER_COLOURS = ["#f2d04b", "#f4efe2", "#b77bb8", "#e9a1b0", "#9fb4e8"].m
 
 /** Wildflowers: thin stems with five-petal heads in yellow, white, heather, pink and harebell. */
 export function flowers(radius: number, count: number, seed: number): THREE.Group {
-  const mats = materials();
+  const mats = flowerMaterials();
   const stem = new THREE.CylinderGeometry(0.004, 0.006, 0.16, 4, 3);
   stem.translate(0, 0.08, 0);
   const petal = new THREE.CircleGeometry(0.018, 6);

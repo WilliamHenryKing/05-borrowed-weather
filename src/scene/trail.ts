@@ -20,6 +20,7 @@ import { shelter } from "./shelter";
 import { Stage } from "./stage";
 import type { TerrainHandle } from "./terrain";
 import { Transfer } from "./transfer";
+import { cheapWater } from "./water";
 import { WeatherCell } from "./weather";
 
 const BUILD = { gate, ford, hollow, terrace, tarn, shelter } as const;
@@ -54,12 +55,15 @@ export class TrailScene {
     onReady: () => void,
     loaded: Assets,
     quality: Quality,
+    adaptive = true,
   ) {
     this.calm = calm;
     // Keep tweens on wall-clock time: slow devices jump rather than crawl in slow motion.
     gsap.ticker.lagSmoothing(0);
     setFoliageDensity(quality === "high" ? 1 : 0.35);
     this.stage = new Stage(host, quality, loaded);
+    this.stage.adaptive = adaptive;
+    this.stage.onDegrade = cheapWater;
     this.stage.onFirstFrame = onReady;
     LOCATIONS.forEach((id, i) => {
       const parts = BUILD[id](RADIUS, 11 + i * 17);
@@ -284,6 +288,11 @@ export class TrailScene {
         id && id !== this.state?.at ? "pointer" : "default";
     }
   };
+
+  /** Swap in the full-resolution sky once it has streamed in (same orientation). */
+  setBackground(sky: THREE.Texture): void {
+    this.stage.scene.background = sky;
+  }
 
   /** Visual-test hooks: pin the camera to a named bookmark (null returns to play). */
   setBookmark(name: BookmarkName | null): void {

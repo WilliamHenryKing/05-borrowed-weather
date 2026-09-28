@@ -48,7 +48,7 @@ for (const shot of SHOTS.filter((s) => !only || only.includes(s.name))) {
   });
   const page = await context.newPage();
   await page.goto(url);
-  await page.waitForFunction(() => window.__VISUAL_TEST__?.ready === true, null, {
+  await page.waitForFunction(() => window.__VISUAL_TEST__?.assetsReady === true, null, {
     timeout: 300_000,
   });
   page.setDefaultTimeout(300_000);

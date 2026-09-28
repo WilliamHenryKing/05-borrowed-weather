@@ -6,6 +6,8 @@ import type { TrailScene } from "./trail";
 
 export interface VisualTestHook {
   ready: boolean;
+  /** True once the deferred assets (2K sky, wood, pebbles, foliage) have arrived. */
+  assetsReady: boolean;
   renderer: string;
   /** What the sky measurement produced (sun illuminance and colour, horizon radiance). */
   lighting: { sun: number[]; sunIlluminance: number; sunColour: number[]; horizon: number[] };
@@ -32,6 +34,7 @@ export function installVisualTest(trail: TrailScene): () => void {
   const stage = trail.stageForTests;
   const hook: VisualTestHook = {
     ready: false,
+    assetsReady: false,
     renderer: stage.rendererName(),
     lighting: {
       sun: stage.sky.sun.toArray(),

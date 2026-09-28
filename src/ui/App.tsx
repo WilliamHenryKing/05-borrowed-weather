@@ -9,7 +9,7 @@ import { hint as nextHint } from "../game/solver";
 import { type Action, apply, createGame, type GameState } from "../game/state";
 import { LOCATIONS, type LocationId, WEATHERS } from "../game/world";
 import { worldReady } from "../loader";
-import { loadAssets, setAssets } from "../scene/assets";
+import { loadAssets, loadDeferred, setAssets } from "../scene/assets";
 import { detectQuality } from "../scene/render/pipeline";
 import { TrailScene } from "../scene/trail";
 import { installVisualTest, visualTestEnabled } from "../scene/visual-test";
@@ -69,18 +69,24 @@ export function App() {
     void loadAssets().then((loaded) => {
       if (cancelled) return;
       setAssets(loaded);
+      const capture = visualTestEnabled();
       trail = new TrailScene(
         el,
         reducedMotion(),
         () => requestAnimationFrame(worldReady),
         loaded,
         detectQuality(),
+        !capture,
       );
       trail.sync(gameRef.current, true);
       trail.onPick = (to: LocationId) => act({ type: "travel", to });
       trail.start();
       scene.current = trail;
-      if (visualTestEnabled()) removeHook = installVisualTest(trail);
+      if (capture) removeHook = installVisualTest(trail);
+      // Non-critical assets (2K sky, wood, pebbles, foliage) stream in behind the first frame.
+      void loadDeferred((sky) => trail?.setBackground(sky)).then(() => {
+        if (window.__VISUAL_TEST__) window.__VISUAL_TEST__.assetsReady = true;
+      });
     });
     return () => {
       cancelled = true;

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "project": "borrowed-weather",
   "policy": "CC0, public domain, NASA or CC-BY only; every shipped third-party file listed here",
-  "totalShippedBytes": 15135297,
+  "totalShippedBytes": 16516671,
   "assets": [
     {
       "id": "polyhaven-table_mountain_1_puresky",
@@ -11,12 +11,20 @@
       "author": "Greg Zaal (original), Jarod Guest (sky edits), Poly Haven",
       "license": "CC0 1.0",
       "retrievalDate": "2026-09-28",
-      "originalSha256": "d9e84174c17828144091cd87eae72b8892a549dcc2831074df3b7c779e776073",
+      "originalSha256": {
+        "1k": "ced63bc210a2cae807dd6aa6dbad28dd754f6e7caf0b3082da05ba7620fe033a",
+        "2k": "d9e84174c17828144091cd87eae72b8892a549dcc2831074df3b7c779e776073"
+      },
       "processingSteps": [
-        "Downloaded the 2k Radiance HDR from the Poly Haven download host",
-        "Shipped unmodified; at runtime the sun is measured out of it, clamped in the IBL copy, and the sky is oriented to put the sun at 32 degrees"
+        "Downloaded the 1k and 2k Radiance HDRs from the Poly Haven download host",
+        "Shipped unmodified; the 1k file lights the first frame (sun measured out of it and clamped in the IBL copy, sky turned about the vertical only), the 2k file replaces the background once streamed"
       ],
       "outputFiles": [
+        {
+          "path": "public/env/table_mountain_1_puresky_1k.hdr",
+          "bytes": 1381374,
+          "sha256": "ced63bc210a2cae807dd6aa6dbad28dd754f6e7caf0b3082da05ba7620fe033a"
+        },
         {
           "path": "public/env/table_mountain_1_puresky_2k.hdr",
           "bytes": 5179035,
