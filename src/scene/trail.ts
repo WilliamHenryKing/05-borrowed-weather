@@ -4,14 +4,16 @@
 import gsap from "gsap";
 import * as THREE from "three";
 import { type GameState, openRoutes } from "../game/state";
-import { LOCATIONS, type LocationId, ROUTES } from "../game/world";
+import { LOCATION_INFO, LOCATIONS, type LocationId, ROUTES } from "../game/world";
+import { Backdrop } from "./backdrop";
 import type { DioramaParts } from "./diorama";
 import { tarn, terrace } from "./highlands";
-import { mesh, PALETTE, puffTexture, rng } from "./kit";
+import { mesh, PALETTE, rng } from "./kit";
 import { ford, gate, hollow } from "./lowlands";
-import { hiker, stone } from "./props";
+import { hiker, nameBoard, stone } from "./props";
 import { shelter } from "./shelter";
 import { Stage } from "./stage";
+import { Transfer } from "./transfer";
 import { WeatherCell } from "./weather";
 
 const LAYOUT: Record<LocationId, [number, number, number]> = {
@@ -24,11 +26,6 @@ const LAYOUT: Record<LocationId, [number, number, number]> = {
 };
 const RADIUS = 2.3;
 const BUILD = { gate, ford, hollow, terrace, tarn, shelter } as const;
-const FILL: Record<string, THREE.Color> = {
-  fog: PALETTE.fog,
-  rain: new THREE.Color("#6fa9c9"),
-  wind: new THREE.Color("#e8dca0"),
-};
 
 interface Stop {
   id: LocationId;
@@ -42,6 +39,8 @@ export class TrailScene {
   private readonly stops: Stop[] = [];
   private readonly markers: { routes: string[]; mat: THREE.MeshStandardMaterial }[] = [];
   private readonly walker = hiker();
+  private readonly transfer = new Transfer();
+  private readonly backdrop: Backdrop;
   private readonly focus = new THREE.Vector3();
   private readonly camPos = new THREE.Vector3();
   private readonly pointer = new THREE.Vector2();
@@ -53,15 +52,20 @@ export class TrailScene {
 
   constructor(host: HTMLElement, calm: boolean, onReady: () => void) {
     this.calm = calm;
+    // Keep tweens on wall-clock time: slow devices jump rather than crawl in slow motion.
+    gsap.ticker.lagSmoothing(0);
     this.stage = new Stage(host);
     this.stage.onFirstFrame = onReady;
-    const puff = puffTexture();
     LOCATIONS.forEach((id, i) => {
       const parts = BUILD[id](RADIUS, 11 + i * 17);
       const root = new THREE.Group();
       root.position.set(...LAYOUT[id]);
       root.rotation.y = i % 2 === 0 ? 0.25 : -0.25;
       root.add(parts.group);
+      const board = nameBoard(LOCATION_INFO[id].name);
+      board.position.set(RADIUS * 0.55, 0, RADIUS * 0.72);
+      board.rotation.y = -root.rotation.y + 0.15;
+      parts.group.add(board);
       root.userData.loc = id;
       const cell = new WeatherCell({
         radius: RADIUS,
@@ -74,8 +78,11 @@ export class TrailScene {
       this.stops.push({ id, root, parts, cell });
     });
     this.buildMarkers();
-    this.buildCloudSea(puff);
-    this.stage.scene.add(this.walker.group);
+    this.backdrop = new Backdrop(
+      new THREE.Vector3(...LAYOUT.hollow).lerp(new THREE.Vector3(...LAYOUT.terrace), 0.5),
+      new THREE.Vector3(...LAYOUT.shelter),
+    );
+    this.stage.scene.add(this.backdrop.group, this.walker.group, this.transfer.group);
     this.stage.onFrame = (dt, t) => this.frame(dt, t);
     this.stage.renderer.domElement.addEventListener("pointerdown", this.onDown);
     this.stage.renderer.domElement.addEventListener("pointerup", this.onUp);
@@ -101,10 +108,14 @@ export class TrailScene {
       gsap.to(m.mat, { emissiveIntensity: lit ? 1.6 : 0, duration: instant ? 0 : 0.6 });
       m.mat.color.set(lit ? "#ffe1ad" : "#6a6a60");
     }
-    const fill = this.walker.jarFill;
-    fill.visible = next.jar !== null;
-    if (next.jar)
-      (fill.material as THREE.MeshStandardMaterial).color.copy(FILL[next.jar] ?? PALETTE.fog);
+    const animate = !instant && prev !== null && prev.at === next.at;
+    this.walker.jar.set(next.jar, animate);
+    const kind = next.jar ?? prev?.jar;
+    if (animate && kind && prev.jar !== next.jar) {
+      const centre = this.stopOf(next.at).root.position;
+      const jar = this.walker.jar.group.getWorldPosition(new THREE.Vector3());
+      this.transfer.burst(kind, centre, jar, next.jar !== null, this.calm);
+    }
     const moved = !prev || prev.at !== next.at;
     if (moved) this.walkTo(prev ? prev.trail.length : 0, next, instant || !prev);
   }
@@ -180,27 +191,6 @@ export class TrailScene {
     }
   }
 
-  private buildCloudSea(puff: THREE.Texture): void {
-    const mat = new THREE.SpriteMaterial({
-      map: puff,
-      color: "#eef0ea",
-      transparent: true,
-      opacity: 0.85,
-      depthWrite: false,
-    });
-    const r = rng(3);
-    const centre = new THREE.Vector3(...LAYOUT.shelter);
-    for (let i = 0; i < 46; i++) {
-      const a = -0.2 + r() * Math.PI * 1.35;
-      const d = 3.6 + r() * 9;
-      const s = new THREE.Sprite(mat);
-      s.position.set(centre.x + Math.cos(a) * d, 5.4 + r() * 1.1, centre.z - Math.sin(a) * d);
-      const k = 3 + r() * 4;
-      s.scale.set(k * 1.6, k * 0.6, 1);
-      this.stage.scene.add(s);
-    }
-  }
-
   private frame(dt: number, time: number): void {
     const s = this.state;
     if (!s) return;
@@ -221,7 +211,9 @@ export class TrailScene {
     this.stage.aimLight(this.focus);
     const w = this.walker.group;
     w.rotation.y = this.calm ? 0.3 : 0.3 + Math.sin(time * 0.7) * 0.08;
-    this.walker.jarFill.scale.setScalar(this.calm ? 1 : 1 + Math.sin(time * 3) * 0.06);
+    this.walker.jar.update(time, this.calm);
+    this.transfer.update(dt);
+    this.backdrop.update(time, this.calm);
   }
 
   private pick(clientX: number, clientY: number): LocationId | null {

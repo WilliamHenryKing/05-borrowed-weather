@@ -148,8 +148,8 @@ export function tarn(radius: number, seed: number): DioramaParts {
   return {
     group,
     stand: new THREE.Vector3(-1.2, 0, 1.1),
-    fogHeight: 0.9,
-    fogSpread: 1.3,
+    fogHeight: 1.0,
+    fogSpread: 1.8,
     update(dt, time, calm, lv) {
       pool.update(time, lv.rain);
       pool.mesh.position.y = 0.04 + lv.rain * 0.06;

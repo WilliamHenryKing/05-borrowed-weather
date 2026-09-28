@@ -1,6 +1,7 @@
 // Reusable trail props: plinths, stones, grass tufts, logs, posts and the hiker.
 
 import * as THREE from "three";
+import { Jar } from "./jar";
 import { earthy, fbm, mesh, mix, PALETTE, rng, roughen, solid } from "./kit";
 
 const SLATE = new THREE.Color("#5b6266");
@@ -119,7 +120,7 @@ export function post(height: number, color: THREE.ColorRepresentation = PALETTE.
 }
 
 /** The hiker: wool hat, coat, pack and the jar at the hip. */
-export function hiker(): { group: THREE.Group; jarFill: THREE.Mesh } {
+export function hiker(): { group: THREE.Group; jar: Jar } {
   const group = new THREE.Group();
   const coat = mesh(new THREE.CapsuleGeometry(0.16, 0.3, 4, 12), solid("#56705f", 0.9));
   coat.position.y = 0.38;
@@ -139,28 +140,10 @@ export function hiker(): { group: THREE.Group; jarFill: THREE.Mesh } {
     leg.position.set(side * 0.07, 0.1, 0);
     group.add(leg);
   }
-  const jar = mesh(
-    new THREE.CylinderGeometry(0.075, 0.075, 0.18, 16),
-    new THREE.MeshPhysicalMaterial({
-      color: "#e8f2f0",
-      roughness: 0.12,
-      transmission: 0.6,
-      transparent: true,
-      opacity: 0.55,
-    }),
-    "none",
-  );
-  jar.position.set(0.2, 0.34, 0.06);
-  const jarFill = mesh(new THREE.SphereGeometry(0.06, 12, 10), solid("#ffffff", 0.6), "none");
-  jarFill.position.copy(jar.position);
-  const lid = mesh(
-    new THREE.CylinderGeometry(0.08, 0.08, 0.035, 16),
-    solid("#b58a45", 0.5),
-    "none",
-  );
-  lid.position.set(0.2, 0.445, 0.06);
-  group.add(coat, head, hat, bobble, pack, jar, jarFill, lid);
-  return { group, jarFill };
+  const jar = new Jar();
+  jar.group.position.set(0.21, 0.36, 0.07);
+  group.add(coat, head, hat, bobble, pack, jar.group);
+  return { group, jar };
 }
 
 /** A small woolly sheep: a cluster of fleece puffs, dark face and legs. */

@@ -126,8 +126,8 @@ export function ford(radius: number, seed: number): DioramaParts {
   return {
     group,
     stand: new THREE.Vector3(-1.4, 0, 0.5),
-    fogHeight: 1.1,
-    fogSpread: 1.1,
+    fogHeight: 1.3,
+    fogSpread: 1.9,
     update(_dt, time, calm, lv) {
       beck.update(time, lv.rain);
       beck.mesh.position.y = 0.05 + lv.rain * 0.07;

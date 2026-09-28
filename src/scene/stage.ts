@@ -14,11 +14,27 @@ varying vec3 vDir;
 uniform vec3 top;
 uniform vec3 horizon;
 uniform vec3 glow;
+uniform vec3 valley;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+             mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
 void main() {
-  float h = clamp(vDir.y * 0.5 + 0.5, 0.0, 1.0);
-  vec3 col = mix(horizon, top, smoothstep(0.45, 0.95, h));
-  float sun = pow(max(dot(vDir, normalize(vec3(0.5, 0.25, -0.8))), 0.0), 6.0);
-  col += glow * sun * 0.5;
+  vec3 d = normalize(vDir);
+  vec3 sunDir = normalize(vec3(0.45, 0.07, -0.9));
+  float sun = max(dot(d, sunDir), 0.0);
+  // Painterly bands: the height is nudged by soft horizontal brush noise.
+  float brush = noise(vec2(atan(d.z, d.x) * 3.0, d.y * 14.0)) - 0.5;
+  float h = d.y + brush * 0.035;
+  vec3 col = mix(horizon, top, smoothstep(0.02, 0.55, h));
+  col = mix(col, valley, smoothstep(0.0, -0.35, h));
+  // Warm low sun: a wide haze, a tighter bloom and a soft disc.
+  col += glow * (pow(sun, 4.0) * 0.35 + pow(sun, 32.0) * 0.5);
+  col = mix(col, vec3(1.0, 0.96, 0.86), smoothstep(0.9975, 0.9995, sun));
   gl_FragColor = vec4(col, 1.0);
 }`;
 
@@ -47,9 +63,9 @@ export class Stage {
     this.renderer.domElement.setAttribute("aria-hidden", "true");
     host.appendChild(this.renderer.domElement);
 
-    const horizon = new THREE.Color("#c9cbbf");
+    const horizon = new THREE.Color("#d9d2bd");
     this.scene.background = horizon;
-    this.scene.fog = new THREE.Fog(horizon, 16, 48);
+    this.scene.fog = new THREE.Fog(new THREE.Color("#c7cdc2"), 14, 62);
     const sky = new THREE.Mesh(
       new THREE.SphereGeometry(90, 24, 16),
       new THREE.ShaderMaterial({
@@ -59,9 +75,10 @@ export class Stage {
         depthWrite: false,
         fog: false,
         uniforms: {
-          top: { value: new THREE.Color("#7f97a0") },
+          top: { value: new THREE.Color("#7894a0") },
           horizon: { value: horizon },
-          glow: { value: new THREE.Color("#ffd8a8") },
+          glow: { value: new THREE.Color("#ffc98a") },
+          valley: { value: new THREE.Color("#9fb1ae") },
         },
       }),
     );

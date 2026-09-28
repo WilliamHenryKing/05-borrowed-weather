@@ -37,9 +37,9 @@ export class WeatherCell {
     this.fog = new FogVolume({
       radius: opts.fogSpread,
       height: opts.fogHeight,
-      layers: 7,
-      density: 0.62,
-      billboards: 7,
+      layers: 8,
+      density: 0.85,
+      billboards: 9,
       seed: opts.seed,
     });
     this.group.add(this.fog.group);
