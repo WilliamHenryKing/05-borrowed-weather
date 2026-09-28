@@ -373,9 +373,7 @@
       "license": "CC0 1.0",
       "retrievalDate": "2026-09-27",
       "originalSha256": "283962d3a975c93613c46cda30c9f0816176ae3e2899f961591a49e2d41b4bf3",
-      "processingSteps": [
-        "Transcoded with Python soundfile/libsndfile: Mono, 32 kHz, OGG Vorbis"
-      ],
+      "processingSteps": ["Transcoded with Python soundfile/libsndfile: Mono, 32 kHz, OGG Vorbis"],
       "outputFiles": [
         {
           "path": "public/audio/music.ogg",
