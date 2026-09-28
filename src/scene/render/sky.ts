@@ -32,8 +32,8 @@ function texelDirection(x: number, y: number, w: number, h: number): THREE.Vecto
 }
 
 /**
- * Measure the HDRI and install it, oriented so its sun sits at `sunAzimuth` (radians, from +x
- * towards +z) and `sunElevation` above the horizon. One rotation moves background, IBL and the
+ * Measure the HDRI and install it, turned about the vertical so its sun sits at `sunAzimuth`
+ * (radians, from +x towards +z) at its own, true elevation. One rotation moves background, IBL and the
  * key light together, so the sky stays a single consistent light source.
  */
 export function installSky(
@@ -41,7 +41,6 @@ export function installSky(
   scene: THREE.Scene,
   hdr: THREE.DataTexture,
   sunAzimuth: number,
-  sunElevation: number,
 ): SkyLight {
   const { width: w, height: h } = hdr.image as { width: number; height: number };
   const src = hdr.image.data as Uint16Array;
@@ -88,10 +87,11 @@ export function installSky(
   const py = Math.floor(peakAt / w);
   const raw = texelDirection(px, py, w, h).normalize();
   // three samples the map at R·d; choose R so the wanted sun direction samples the HDRI's sun.
+  const elevation = Math.asin(THREE.MathUtils.clamp(raw.y, -1, 1));
   const sun = new THREE.Vector3(
-    Math.cos(sunElevation) * Math.cos(sunAzimuth),
-    Math.sin(sunElevation),
-    Math.cos(sunElevation) * Math.sin(sunAzimuth),
+    Math.cos(elevation) * Math.cos(sunAzimuth),
+    Math.sin(elevation),
+    Math.cos(elevation) * Math.sin(sunAzimuth),
   );
   const orient = new THREE.Quaternion().setFromUnitVectors(sun, raw);
 

@@ -9,9 +9,11 @@ import { installSky, type SkyLight } from "./render/sky";
 
 /** Exposure: the single brightness control. */
 const EXPOSURE = 2.6;
-/** Sun placement for the composition: ahead and to the right of the climb, afternoon-high. */
-const SUN_AZIMUTH = Math.atan2(-0.9, 0.45);
-const SUN_ELEVATION = THREE.MathUtils.degToRad(32);
+/**
+ * Sun placement for the composition: the HDRI's own warm, low sun (about 13°), turned to rake
+ * in from the camera's right so the faces we look at catch golden light and shadows fall long.
+ */
+const SUN_AZIMUTH = Math.atan2(0.35, 0.9);
 /** Metres the key light's shadow box spans around the focused diorama. */
 const SHADOW_HALF = 3.4;
 
@@ -46,7 +48,8 @@ function patchFog(): void {
   THREE.ShaderChunk.fog_fragment = `#ifdef USE_FOG
   #ifdef FOG_EXP2
     float fogThin = exp( -max( vFogHeight - 2.0, 0.0 ) * 0.035 );
-    float fogFactor = 1.0 - exp( -fogDensity * vFogDepth * fogThin );
+    // Clear air around the play area; extinction builds only beyond ~12 units.
+    float fogFactor = 1.0 - exp( -fogDensity * max( vFogDepth - 12.0, 0.0 ) * fogThin );
   #else
     float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
   #endif
@@ -68,6 +71,12 @@ export class Stage {
   private running = false;
   private frozenAt: number | null = null;
   private paused = false;
+  /** Adaptive step: seconds the smoothed frame time has stayed over budget, and whether spent. */
+  private slowFor = 0;
+  private frameAvg = 1 / 60;
+  private degraded = false;
+  adaptive = true;
+  onDegrade: () => void = () => {};
   private waiters: { frame: number; done: () => void }[] = [];
   onFrame: (dt: number, time: number) => void = () => {};
   onFirstFrame: () => void = () => {};
@@ -92,8 +101,8 @@ export class Stage {
     this.renderer.domElement.setAttribute("aria-hidden", "true");
     host.appendChild(this.renderer.domElement);
 
-    this.sky = installSky(this.renderer, this.scene, assets.sky, SUN_AZIMUTH, SUN_ELEVATION);
-    this.scene.fog = new THREE.FogExp2(this.sky.horizon.clone(), 0.004);
+    this.sky = installSky(this.renderer, this.scene, assets.sky, SUN_AZIMUTH);
+    this.scene.fog = new THREE.FogExp2(this.sky.horizon.clone(), 0.006);
 
     this.key = new THREE.DirectionalLight(this.sky.sunColour, this.sky.sunIlluminance);
     this.key.castShadow = true;
@@ -162,6 +171,7 @@ export class Stage {
         return;
       }
       const raw = Math.min(this.clock.getDelta(), 0.1);
+      this.watchFrameTime(raw);
       const dt = this.frozenAt === null ? raw : 0;
       this.onFrame(dt, this.frozenAt ?? this.clock.elapsedTime);
       this.pipeline.render();
@@ -177,6 +187,20 @@ export class Stage {
   /** Stop scene time (visual tests); rendering continues so captures stay live. */
   freeze(on: boolean): void {
     this.frozenAt = on ? this.clock.elapsedTime : null;
+  }
+
+  /**
+   * If frames stay over 16.7 ms for about two seconds on the high tier, drop GTAO and the water's
+   * transmission pass once (never flip back, so it cannot oscillate).
+   */
+  private watchFrameTime(raw: number): void {
+    if (!this.adaptive || this.degraded || this.quality !== "high" || this.frame < 30) return;
+    this.frameAvg += (raw - this.frameAvg) * 0.1;
+    this.slowFor = this.frameAvg > 1 / 59 ? this.slowFor + raw : 0;
+    if (this.slowFor < 2) return;
+    this.degraded = true;
+    this.pipeline.degrade();
+    this.onDegrade();
   }
 
   /** Stop drawing (visual tests): the last frame stays on the canvas for a screenshot. */

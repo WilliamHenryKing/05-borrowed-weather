@@ -46,7 +46,7 @@ void main() {
   float lit = max(dot(n, sunDir), 0.0);
   float billow = smoothstep(0.32, 0.72, h);
   // Troughs between the billows sit in their own shade.
-  vec3 col = 0.85 / PI * (skyColour * mix(0.35, 1.0, billow) + sunColour * lit * mix(0.25, 1.0, billow));
+  vec3 col = 0.7 / PI * (skyColour * mix(0.35, 1.0, billow) + sunColour * lit * mix(0.25, 1.0, billow));
   float dist = length(vWorld.xz - cameraPosition.xz);
   col = mix(col, horizon, smoothstep(30.0, 180.0, dist));
   gl_FragColor = vec4(col, 1.0);
@@ -60,7 +60,10 @@ export class CloudFloor {
     // Irradiances in the sky's own units: the sun's, and the sky dome's (about π × its mean
     // radiance, approximated from the horizon band).
     const sunColour = sky.sunColour.clone().multiplyScalar(sky.sunIlluminance);
-    const skyColour = sky.horizon.clone().multiplyScalar(Math.PI * 0.6);
+    const skyColour = sky.horizon
+      .clone()
+      .multiply(new THREE.Color(0.88, 0.94, 1.06))
+      .multiplyScalar(Math.PI * 0.6);
     const material = new THREE.ShaderMaterial({
       vertexShader: VERT,
       fragmentShader: FRAG,

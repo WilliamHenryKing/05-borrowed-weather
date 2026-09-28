@@ -7,10 +7,32 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
 export type Quality = "high" | "low";
+
+/** A restrained linear-light grade before tone mapping: a little saturation, a soft vignette. */
+const GradeShader = {
+  name: "BorrowedWeatherGrade",
+  uniforms: { tDiffuse: { value: null }, saturation: { value: 1.18 }, vignette: { value: 0.16 } },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform float saturation;
+    uniform float vignette;
+    varying vec2 vUv;
+    void main() {
+      vec4 texel = texture2D(tDiffuse, vUv);
+      float l = dot(texel.rgb, vec3(0.2126, 0.7152, 0.0722));
+      vec3 c = max(mix(vec3(l), texel.rgb, saturation), 0.0);
+      c *= 1.0 - vignette * smoothstep(0.35, 0.95, length(vUv - 0.5) * 1.4);
+      gl_FragColor = vec4(c, texel.a);
+    }`,
+};
 
 type VisibilityPatched = { _overrideVisibility(): void; _visibilityCache: THREE.Object3D[] };
 
@@ -98,11 +120,17 @@ export class Pipeline {
       high.needsUpdate = true;
       this.composer.addPass(bloom);
     }
+    this.composer.addPass(new ShaderPass(GradeShader));
     this.composer.addPass(new OutputPass());
     if (quality === "high") {
       this.smaa = new SMAAPass();
       this.composer.addPass(this.smaa);
     }
+  }
+
+  /** The adaptive step: drop ambient occlusion when frames stay slow. */
+  degrade(): void {
+    if (this.ao) this.ao.enabled = false;
   }
 
   setSize(width: number, height: number, pixelRatio: number): void {

@@ -2,8 +2,8 @@
 // from ODD TIDE's terrain shader: triplanar scanned rock on the sides, regraded from the scan's
 // ochre toward damp grey-brown stone, moss creeping in near the turf and in macro patches, and
 // top-projected turf. A per-island `wetness` (rain present) darkens and glosses everything.
-// Vertex colours carry baked occlusion (R), per-island variation (G) and nearness to the
-// turf rim (B).
+// Vertex colours carry baked occlusion (R), per-island variation (G), nearness to the turf
+// rim (B) and the damp band where water meets turf (A).
 
 import * as THREE from "three";
 import { assets } from "./assets";
@@ -101,7 +101,8 @@ export function terrainMaterial(seed: number): TerrainHandle {
         // Rock: the cliff scan's strata, desaturated and cooled toward damp stone.
         vec3 rockAlbedo = tri(rockColour, P, W, 0.55).rgb;
         float rl = dot(rockAlbedo, vec3(0.2126, 0.7152, 0.0722));
-        rockAlbedo = mix(vec3(rl), rockAlbedo, 0.45) * vec3(0.92, 0.9, 0.86) * mix(0.8, 1.05, variation);
+        // Keep most of the scan's warm ochre so sunlit cliffs glow against the cool cloud sea.
+        rockAlbedo = mix(vec3(rl), rockAlbedo, 0.85) * vec3(1.0, 0.95, 0.88) * mix(0.8, 1.05, variation);
         vec3 rockArmV = tri(rockArm, P, W, 0.55).rgb;
         // Moss near the rim and in patches, where water runs off the turf.
         float rim = vColor.b;
@@ -124,9 +125,10 @@ export function terrainMaterial(seed: number): TerrainHandle {
         vec3 arm = mix(sideArm, turfArmV, turfMask);
         vec3 terrainN = normalize(mix(sideN, topNormal(turfNormal, topUv, N), turfMask));
 
-        // Rain darkens and glosses stone and turf alike.
-        albedo *= mix(1.0, 0.7, wetness);
-        float terrainRoughness = mix(arm.g, arm.g * 0.55, wetness);
+        // Rain darkens and glosses stone and turf alike; so does the damp band along a bank.
+        float wet = max(wetness, vColor.a);
+        albedo *= mix(1.0, 0.62, wet);
+        float terrainRoughness = mix(arm.g, arm.g * 0.45, wet);
         float terrainAo = arm.r;
         diffuseColor.rgb = albedo;`,
       )
