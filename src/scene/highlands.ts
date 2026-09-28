@@ -4,6 +4,7 @@ import * as THREE from "three";
 import type { DioramaParts } from "./diorama";
 import { mesh, PALETTE, rng, solid } from "./kit";
 import { grass, log, plinth, post, stone } from "./props";
+import { water } from "./water";
 
 /** A fern frond as a chain of leaflets; `curl` 1 rolls it into a fiddlehead, 0 lays it flat. */
 function frond(segments: number): { root: THREE.Group; joints: THREE.Group[] } {
@@ -93,14 +94,9 @@ export function terrace(radius: number, seed: number): DioramaParts {
 export function tarn(radius: number, seed: number): DioramaParts {
   const group = plinth(radius, 1.6, seed);
   group.add(grass(radius, 140, seed, [{ x: 0.2, z: -0.3, r: 1.6 }]));
-  const water = mesh(
-    new THREE.CircleGeometry(1.55, 40),
-    new THREE.MeshStandardMaterial({ color: "#35606a", roughness: 0.08, metalness: 0.2 }),
-    "receive",
-  );
-  water.rotation.x = -Math.PI / 2;
-  water.position.set(0.2, 0.03, -0.3);
-  group.add(water);
+  const pool = water(3.1, 3.1, true, 0.15);
+  pool.mesh.position.set(0.2, 0.04, -0.3);
+  group.add(pool.mesh);
   const jetty = mesh(new THREE.BoxGeometry(0.5, 0.06, 0.9), solid(PALETTE.wood, 0.9));
   jetty.position.set(-0.6, 0.1, 1.0);
   group.add(jetty);
@@ -155,6 +151,8 @@ export function tarn(radius: number, seed: number): DioramaParts {
     fogHeight: 0.9,
     fogSpread: 1.3,
     update(dt, time, calm, lv) {
+      pool.update(time, lv.rain);
+      pool.mesh.position.y = 0.04 + lv.rain * 0.06;
       const clear = 1 - lv.fog;
       const open = lv.wind * clear;
       bulbMat.opacity = clear;
@@ -169,108 +167,6 @@ export function tarn(radius: number, seed: number): DioramaParts {
       );
       ferry.rotation.y = 0.6 + (calm ? 0 : Math.sin(time * 0.9) * 0.05);
       sail.scale.x = 0.4 + lv.wind * 0.6;
-    },
-  };
-}
-
-export function shelter(radius: number, seed: number): DioramaParts {
-  const group = plinth(radius, 2.4, seed);
-  group.add(grass(radius, 160, seed, [{ x: 0, z: -0.6, r: 1.1 }]));
-  // The hut: thick stone walls, a turf roof and a lantern by the door.
-  const hut = new THREE.Group();
-  const walls = stone(0.75, seed + 4, 0.4);
-  walls.scale.set(1.3, 1.25, 1.1);
-  walls.position.y = 0.55;
-  const door = mesh(new THREE.BoxGeometry(0.34, 0.6, 0.05), solid("#2a1f18", 1), "none");
-  door.position.set(0, 0.32, 0.72);
-  const roof = mesh(new THREE.ConeGeometry(1.25, 0.8, 4), solid("#5c6e3c", 1));
-  roof.rotation.y = Math.PI / 4;
-  roof.position.y = 1.45;
-  hut.add(walls, door, roof);
-  hut.position.set(0, 0, -0.6);
-  group.add(hut);
-  const lanternMat = new THREE.MeshStandardMaterial({
-    color: "#ffe2b0",
-    emissive: PALETTE.lantern,
-    emissiveIntensity: 0.2,
-  });
-  const lantern = mesh(new THREE.SphereGeometry(0.09, 12, 10), lanternMat, "none");
-  lantern.position.set(0.3, 0.95, 0.22);
-  const glow = new THREE.PointLight(PALETTE.lantern, 0, 4, 1.6);
-  glow.position.copy(lantern.position);
-  group.add(lantern, glow);
-  // Instruments: wind vane cups, rain gauge and the cloud glass.
-  const vane = new THREE.Group();
-  const cupMat = solid("#b58a45", 0.4);
-  for (let i = 0; i < 3; i++) {
-    const arm = mesh(new THREE.BoxGeometry(0.28, 0.02, 0.02), cupMat, "none");
-    arm.position.x = 0.14;
-    const cup = mesh(new THREE.SphereGeometry(0.05, 8, 6, 0, Math.PI), cupMat, "none");
-    cup.position.x = 0.28;
-    const a = new THREE.Group();
-    a.add(arm, cup);
-    a.rotation.y = (i * Math.PI * 2) / 3;
-    vane.add(a);
-  }
-  const vanePost = post(1.2, PALETTE.woodDark);
-  vanePost.position.set(1.2, 0, 0.3);
-  vane.position.set(1.2, 1.22, 0.3);
-  const glassMat = new THREE.MeshPhysicalMaterial({
-    color: "#dff0f0",
-    roughness: 0.1,
-    transmission: 0.5,
-    transparent: true,
-    opacity: 0.5,
-  });
-  const gauge = mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.5, 14, 1, true), glassMat, "none");
-  gauge.position.set(-1.1, 0.25, 0.5);
-  const gaugeWater = mesh(
-    new THREE.CylinderGeometry(0.07, 0.07, 0.48, 14),
-    solid("#5f9fc0", 0.2),
-    "none",
-  );
-  gaugeWater.position.set(-1.1, 0.01, 0.5);
-  const orb = mesh(new THREE.SphereGeometry(0.16, 18, 14), glassMat, "none");
-  orb.position.set(-0.7, 0.62, 1.0);
-  const orbCore = mesh(
-    new THREE.SphereGeometry(0.12, 14, 10),
-    new THREE.MeshStandardMaterial({
-      color: "#ffffff",
-      emissive: "#c9d8e0",
-      emissiveIntensity: 0,
-      transparent: true,
-      opacity: 0.1,
-    }),
-    "none",
-  );
-  orbCore.position.copy(orb.position);
-  const stand = post(0.46, PALETTE.woodDark);
-  stand.position.set(-0.7, 0, 1.0);
-  const seat = log(0.9, 0.14, seed + 3);
-  seat.position.set(0.9, 0.14, 1.3);
-  seat.rotation.y = -0.5;
-  group.add(vanePost, vane, gauge, gaugeWater, orb, orbCore, stand, seat);
-  const shown = { fog: 0, rain: 0, wind: 0 };
-  let spin = 0;
-  return {
-    group,
-    stand: new THREE.Vector3(0.1, 0, 1.2),
-    fogHeight: 0.6,
-    fogSpread: 1.2,
-    update(dt, time, calm, _lv, state) {
-      const ease = 1 - Math.exp(-dt * 1.8);
-      for (const k of ["fog", "rain", "wind"] as const)
-        shown[k] += ((state.restored.includes(k) ? 1 : 0) - shown[k]) * ease;
-      spin += dt * shown.wind * (calm ? 0.6 : 4);
-      vane.rotation.y = spin;
-      gaugeWater.scale.y = 0.04 + shown.rain * 0.96;
-      gaugeWater.position.y = 0.01 + gaugeWater.scale.y * 0.24;
-      const core = orbCore.material as THREE.MeshStandardMaterial;
-      core.opacity = 0.1 + shown.fog * 0.75;
-      core.emissiveIntensity = shown.fog * (0.6 + (calm ? 0 : Math.sin(time * 1.2) * 0.1));
-      const lit = (shown.fog + shown.rain + shown.wind) / 3;
-      lanternMat.emissiveIntensity = 0.2 + lit * 3;
-      glow.intensity = lit * 3.5;
     },
   };
 }

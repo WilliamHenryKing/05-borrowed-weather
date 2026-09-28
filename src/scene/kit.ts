@@ -143,7 +143,7 @@ export function puffTexture(): THREE.Texture {
 
 export function mesh(
   geo: THREE.BufferGeometry,
-  mat: THREE.Material,
+  mat: THREE.Material | THREE.Material[],
   shadow: "cast" | "receive" | "both" | "none" = "both",
 ): THREE.Mesh {
   const m = new THREE.Mesh(geo, mat);

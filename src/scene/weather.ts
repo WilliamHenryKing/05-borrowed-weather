@@ -3,6 +3,7 @@
 
 import * as THREE from "three";
 import type { Weather } from "../game/world";
+import { FogVolume, noisyPuffTexture } from "./fog";
 import { PALETTE, rng } from "./kit";
 
 const RAIN_DROPS = 220;
@@ -21,8 +22,7 @@ export class WeatherCell {
   readonly group = new THREE.Group();
   readonly level: Record<Weather, number> = { fog: 0, rain: 0, wind: 0 };
   private target: Record<Weather, number> = { fog: 0, rain: 0, wind: 0 };
-  private readonly fogMat: THREE.SpriteMaterial;
-  private readonly fog: { sprite: THREE.Sprite; base: THREE.Vector3; phase: number }[] = [];
+  private readonly fog: FogVolume;
   private readonly cloudMat: THREE.SpriteMaterial;
   private readonly rain: THREE.LineSegments;
   private readonly rainPos: Float32Array;
@@ -32,44 +32,27 @@ export class WeatherCell {
   private readonly streaks: { y: number; z: number; offset: number; speed: number; amp: number }[] =
     [];
 
-  constructor(
-    puff: THREE.Texture,
-    private readonly opts: CellOptions,
-  ) {
+  constructor(private readonly opts: CellOptions) {
     const r = rng(opts.seed);
-    this.fogMat = new THREE.SpriteMaterial({
-      map: puff,
-      color: PALETTE.fog,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
+    this.fog = new FogVolume({
+      radius: opts.fogSpread,
+      height: opts.fogHeight,
+      layers: 7,
+      density: 0.62,
+      billboards: 7,
+      seed: opts.seed,
     });
-    for (let i = 0; i < 18; i++) {
-      const sprite = new THREE.Sprite(this.fogMat);
-      const a = r() * Math.PI * 2;
-      const d = Math.sqrt(r()) * opts.fogSpread;
-      const base = new THREE.Vector3(
-        Math.cos(a) * d,
-        opts.fogHeight * (0.35 + r() * 0.8),
-        Math.sin(a) * d,
-      );
-      const s = 1.1 + r() * 1.3;
-      sprite.scale.set(s * 1.4, s, 1);
-      sprite.position.copy(base);
-      sprite.renderOrder = 2;
-      this.fog.push({ sprite, base, phase: r() * 10 });
-      this.group.add(sprite);
-    }
+    this.group.add(this.fog.group);
 
     // A small grey raincloud hovering over the shower.
     this.cloudMat = new THREE.SpriteMaterial({
-      map: puff,
+      map: noisyPuffTexture(),
       color: "#8d9a9e",
       transparent: true,
       opacity: 0,
       depthWrite: false,
     });
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 9; i++) {
       const s = new THREE.Sprite(this.cloudMat);
       s.position.set((r() - 0.5) * 1.6, 3.1 + r() * 0.3, (r() - 0.5) * 1.1);
       s.scale.set(1.3 + r(), 0.8 + r() * 0.4, 1);
@@ -137,13 +120,8 @@ export class WeatherCell {
       this.level[k] += (this.target[k] - this.level[k]) * ease;
     const motion = calm ? 0.15 : 1;
 
-    const fog = this.level.fog;
-    this.fogMat.opacity = fog * 0.62;
-    for (const f of this.fog) {
-      f.sprite.visible = fog > 0.01;
-      const drift = Math.sin(time * 0.25 * motion + f.phase) * 0.35;
-      f.sprite.position.set(f.base.x + drift, f.base.y * (0.5 + fog * 0.5), f.base.z + drift * 0.4);
-    }
+    this.fog.setLevel(this.level.fog);
+    this.fog.update(time, motion);
 
     const rain = this.level.rain;
     this.cloudMat.opacity = rain * 0.85;

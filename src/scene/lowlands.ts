@@ -2,8 +2,10 @@
 
 import * as THREE from "three";
 import type { DioramaParts } from "./diorama";
+import { FogVolume } from "./fog";
 import { mesh, PALETTE, rng, solid } from "./kit";
-import { grass, log, plinth, post, stone } from "./props";
+import { flowers, grass, log, plinth, post, sheep, stone } from "./props";
+import { water } from "./water";
 
 export function gate(radius: number, seed: number): DioramaParts {
   const group = plinth(radius, 1.6, seed);
@@ -43,7 +45,23 @@ export function gate(radius: number, seed: number): DioramaParts {
   const seat = log(1.5, 0.2, seed + 11);
   seat.position.set(-0.7, 0.18, 0.9);
   seat.rotation.y = 0.35;
-  group.add(seat);
+  group.add(seat, flowers(radius, 70, seed + 4));
+  // The flock that the gate is for, grazing on the near side.
+  const flock = [
+    [-1.2, -0.3, 0.6],
+    [-0.4, -0.2, 2.2],
+    [1.3, -0.55, -2.4],
+  ].map(([x, z, ry], i) => {
+    const s = sheep(seed + i * 13);
+    s.position.set(x ?? 0, 0, z ?? 0);
+    s.rotation.y = ry ?? 0;
+    group.add(s);
+    return s;
+  });
+  // A puddle fed by the shower: it shrinks when the rain is bottled.
+  const puddle = water(1.2, 0.8, true, 0);
+  puddle.mesh.position.set(0.9, 0.04, 1.2);
+  group.add(puddle.mesh);
   // A signpost pointing up the trail.
   const sign = post(1.2);
   sign.position.set(1.5, 0, 0.6);
@@ -56,7 +74,14 @@ export function gate(radius: number, seed: number): DioramaParts {
     stand: new THREE.Vector3(0.3, 0, 0.3),
     fogHeight: 1.2,
     fogSpread: radius * 0.8,
-    update() {},
+    update(_dt, time, calm, lv) {
+      puddle.update(time, lv.rain);
+      const wet = 0.35 + lv.rain * 0.65;
+      puddle.mesh.scale.set(wet, wet, 1);
+      flock.forEach((s, i) => {
+        s.rotation.z = calm ? 0 : Math.max(0, Math.sin(time * 0.9 + i * 2.1)) * 0.12;
+      });
+    },
   };
 }
 
@@ -70,13 +95,14 @@ export function ford(radius: number, seed: number): DioramaParts {
     ]),
   );
   // The beck: a band of dark, glossy water crossing the plinth.
-  const water = mesh(
-    new THREE.BoxGeometry(0.95, 0.06, radius * 2 - 0.2),
-    new THREE.MeshStandardMaterial({ color: PALETTE.water, roughness: 0.15, metalness: 0.1 }),
+  const bed = mesh(
+    new THREE.BoxGeometry(1.0, 0.04, radius * 2 - 0.25),
+    solid("#2b3a34", 1),
     "receive",
   );
-  water.position.y = 0.05;
-  group.add(water);
+  bed.position.y = 0.01;
+  const beck = water(1.0, radius * 2 - 0.25, false, 1);
+  group.add(bed, beck.mesh);
   const r = rng(seed + 5);
   for (let i = 0; i < 12; i++) {
     const bank = stone(0.16 + r() * 0.1, seed + 30 + i, 0.8);
@@ -103,6 +129,8 @@ export function ford(radius: number, seed: number): DioramaParts {
     fogHeight: 1.1,
     fogSpread: 1.1,
     update(_dt, time, calm, lv) {
+      beck.update(time, lv.rain);
+      beck.mesh.position.y = 0.05 + lv.rain * 0.07;
       const shown = 1 - lv.fog;
       stoneMat.opacity = shown;
       stones.forEach((s, i) => {
@@ -143,35 +171,27 @@ export function hollow(radius: number, seed: number): DioramaParts {
     cairn.lookAt(0, 0, 0.1);
     group.add(cairn);
   }
-  // The cloud step: soft white puffs that gather when fog is released here.
-  const cloud = new THREE.Group();
-  const cloudMat = new THREE.MeshStandardMaterial({
-    color: "#f4f6f4",
-    roughness: 1,
-    emissive: "#8a9a9a",
-    emissiveIntensity: 0.25,
+  // The cloud step: released fog gathers in the hollow as a thick, brighter cushion.
+  const cloud = new FogVolume({
+    radius: 0.95,
+    height: 0.8,
+    layers: 8,
+    density: 1.15,
+    billboards: 8,
+    seed: seed + 9,
+    tint: "#f6f8f6",
   });
-  for (let i = 0; i < 9; i++) {
-    const p = mesh(new THREE.SphereGeometry(0.22 + r() * 0.16, 14, 10), cloudMat, "cast");
-    p.position.set(
-      (r() - 0.5) * 0.9,
-      0.35 + r() * 0.35 + (i > 5 ? 0.35 : 0),
-      (r() - 0.5) * 0.6 - (i > 5 ? 0.45 : 0),
-    );
-    cloud.add(p);
-  }
-  cloud.position.set(0, 0, 0.0);
-  group.add(cloud);
+  cloud.group.position.set(0, 0.05, -0.2);
+  group.add(cloud.group);
   return {
     group,
     stand: new THREE.Vector3(1.1, 0, 1.0),
     fogHeight: 0.5,
     fogSpread: 0.5,
     update(_dt, time, calm, lv) {
-      const s = lv.fog;
-      cloud.visible = s > 0.02;
-      cloud.scale.setScalar(0.2 + s * 0.8);
-      cloud.position.y = calm ? 0 : Math.sin(time * 0.8) * 0.04;
+      cloud.setLevel(lv.fog);
+      cloud.update(time, calm ? 0.2 : 1);
+      cloud.group.position.y = 0.05 + (calm ? 0 : Math.sin(time * 0.8) * 0.03);
     },
   };
 }

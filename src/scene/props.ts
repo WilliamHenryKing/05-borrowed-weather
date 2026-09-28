@@ -1,7 +1,10 @@
 // Reusable trail props: plinths, stones, grass tufts, logs, posts and the hiker.
 
 import * as THREE from "three";
-import { earthy, mesh, mix, PALETTE, rng, roughen, solid } from "./kit";
+import { earthy, fbm, mesh, mix, PALETTE, rng, roughen, solid } from "./kit";
+
+const SLATE = new THREE.Color("#5b6266");
+const RUST = new THREE.Color("#8a5d3e");
 
 /** A diorama plinth: a mossy cap over layered earth and stone, like a cut-out of hillside. */
 export function plinth(radius: number, depth: number, seed: number): THREE.Group {
@@ -10,10 +13,16 @@ export function plinth(radius: number, depth: number, seed: number): THREE.Group
   body.translate(0, -depth / 2, 0);
   const g = roughen(body, 0.45, 0.9, seed, (p, n) => {
     const t = -p.y / depth;
-    if (t < 0.08) return mix(PALETTE.mossDeep, PALETTE.moss, n);
+    if (t < 0.07) return mix(PALETTE.mossDeep, PALETTE.moss, n);
+    if (t < 0.13 && n > 0.45) return mix(PALETTE.earthDeep, PALETTE.mossDeep, 0.6);
+    // Strata of damp earth, slate, rust-stained and lichen-pale stone, darker towards the tip.
+    const band = fbm(p.x * 0.6 + seed, p.y * 3.2, p.z * 0.6);
     const strata = Math.sin(p.y * 7 + n * 4) * 0.5 + 0.5;
-    const base = mix(PALETTE.earth, PALETTE.earthDeep, t);
-    return mix(base, PALETTE.stoneWet, strata * 0.45 + (n > 0.62 ? 0.4 : 0));
+    let c = mix(PALETTE.earth, SLATE, strata * 0.6);
+    if (band > 0.6) c = mix(c, RUST, (band - 0.6) * 2.5);
+    else if (band < 0.36) c = mix(c, PALETTE.lichen, (0.36 - band) * 1.8);
+    if (n > 0.64) c = mix(c, PALETTE.stoneWet, 0.5);
+    return mix(c, PALETTE.earthDeep, t * 0.75);
   });
   group.add(mesh(g, earthy()));
   const cap = new THREE.CircleGeometry(radius * 0.99, 40, 0, Math.PI * 2);
@@ -152,4 +161,91 @@ export function hiker(): { group: THREE.Group; jarFill: THREE.Mesh } {
   lid.position.set(0.2, 0.445, 0.06);
   group.add(coat, head, hat, bobble, pack, jar, jarFill, lid);
   return { group, jarFill };
+}
+
+/** A small woolly sheep: a cluster of fleece puffs, dark face and legs. */
+export function sheep(seed: number): THREE.Group {
+  const g = new THREE.Group();
+  const r = rng(seed);
+  const wool = solid("#ece4d2", 1);
+  for (let i = 0; i < 7; i++) {
+    const puff = mesh(new THREE.IcosahedronGeometry(0.11 + r() * 0.04, 1), wool);
+    puff.position.set((r() - 0.5) * 0.28, 0.3 + r() * 0.08, (r() - 0.5) * 0.18);
+    g.add(puff);
+  }
+  const dark = solid("#2e2a28", 0.9);
+  const head = mesh(new THREE.SphereGeometry(0.075, 10, 8), dark);
+  head.scale.set(1, 0.9, 1.3);
+  head.position.set(0.2, 0.34, 0);
+  const ears = mesh(new THREE.BoxGeometry(0.02, 0.03, 0.18), dark);
+  ears.position.set(0.19, 0.39, 0);
+  g.add(head, ears);
+  for (const [x, z] of [
+    [-0.1, -0.06],
+    [-0.1, 0.06],
+    [0.1, -0.06],
+    [0.1, 0.06],
+  ] as const) {
+    const leg = mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.22, 5), dark);
+    leg.position.set(x, 0.11, z);
+    g.add(leg);
+  }
+  return g;
+}
+
+/** Instanced meadow flowers: little heads of yellow, white and heather on short stems. */
+export function flowers(radius: number, count: number, seed: number): THREE.InstancedMesh {
+  const head = new THREE.IcosahedronGeometry(0.03, 0);
+  head.translate(0, 0.08, 0);
+  const inst = new THREE.InstancedMesh(head, solid("#ffffff", 0.7), count);
+  const r = rng(seed);
+  const colors = ["#f2d04b", "#f4efe2", "#b77bb8", "#e9a1b0"].map((c) => new THREE.Color(c));
+  const m = new THREE.Matrix4();
+  for (let i = 0; i < count; i++) {
+    const a = r() * Math.PI * 2;
+    const d = Math.sqrt(r()) * radius * 0.92;
+    const s = 0.7 + r() * 0.8;
+    m.makeScale(s, s, s).setPosition(Math.cos(a) * d, 0, Math.sin(a) * d);
+    inst.setMatrixAt(i, m);
+    inst.setColorAt(i, colors[i % colors.length] ?? colors[0] ?? new THREE.Color());
+  }
+  inst.castShadow = true;
+  return inst;
+}
+
+/** A small painted board naming the diorama, on a stake at the plinth edge. */
+export function nameBoard(text: string): THREE.Group {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "#8c6440";
+    ctx.fillRect(0, 0, 256, 64);
+    ctx.strokeStyle = "#5a3d24";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(3, 3, 250, 58);
+    ctx.fillStyle = "#f4e9cf";
+    ctx.font = "italic 30px Georgia, 'Palatino Linotype', serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, 128, 34);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  const g = new THREE.Group();
+  const stake = post(0.5, PALETTE.woodDark);
+  const edge = solid("#5a3d24");
+  const board = mesh(new THREE.BoxGeometry(0.72, 0.18, 0.03), [
+    edge,
+    edge,
+    edge,
+    edge,
+    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }),
+    edge,
+  ]);
+  board.position.y = 0.5;
+  g.add(stake, board);
+  return g;
 }

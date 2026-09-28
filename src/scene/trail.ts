@@ -6,10 +6,11 @@ import * as THREE from "three";
 import { type GameState, openRoutes } from "../game/state";
 import { LOCATIONS, type LocationId, ROUTES } from "../game/world";
 import type { DioramaParts } from "./diorama";
-import { shelter, tarn, terrace } from "./highlands";
+import { tarn, terrace } from "./highlands";
 import { mesh, PALETTE, puffTexture, rng } from "./kit";
 import { ford, gate, hollow } from "./lowlands";
 import { hiker, stone } from "./props";
+import { shelter } from "./shelter";
 import { Stage } from "./stage";
 import { WeatherCell } from "./weather";
 
@@ -62,7 +63,7 @@ export class TrailScene {
       root.rotation.y = i % 2 === 0 ? 0.25 : -0.25;
       root.add(parts.group);
       root.userData.loc = id;
-      const cell = new WeatherCell(puff, {
+      const cell = new WeatherCell({
         radius: RADIUS,
         fogHeight: parts.fogHeight,
         fogSpread: parts.fogSpread,
