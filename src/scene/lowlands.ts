@@ -1,10 +1,11 @@
 // The lower trail: Wool Gate, Fog Ford and Cairn Hollow.
 
 import * as THREE from "three";
+import { assets, type Scan } from "./assets";
 import type { DioramaParts } from "./diorama";
 import { FogVolume } from "./fog";
-import { mesh, PALETTE, rng, solid } from "./kit";
-import { flowers, grass, log, plinth, post, sheep, stone } from "./props";
+import { mesh, rng, solid } from "./kit";
+import { boulder, flowers, grass, log, pebbles, plinth, post, sheep, stone, wood } from "./props";
 import { water } from "./water";
 
 export function gate(radius: number, seed: number): DioramaParts {
@@ -13,16 +14,16 @@ export function gate(radius: number, seed: number): DioramaParts {
   // Sheep gate between two dry-stone wall stubs.
   const gateGroup = new THREE.Group();
   for (const x of [-0.7, 0.7]) {
-    const p = post(1.05, PALETTE.woodDark);
+    const p = post(1.05, 0.75);
     p.position.x = x;
     gateGroup.add(p);
   }
   for (const y of [0.3, 0.6, 0.9]) {
-    const rail = mesh(new THREE.BoxGeometry(1.3, 0.07, 0.06), solid(PALETTE.wood, 0.85));
+    const rail = mesh(new THREE.BoxGeometry(1.3, 0.07, 0.06), wood("planks", 1, [1, 0.1]));
     rail.position.y = y;
     gateGroup.add(rail);
   }
-  const brace = mesh(new THREE.BoxGeometry(1.45, 0.07, 0.05), solid(PALETTE.wood, 0.85));
+  const brace = mesh(new THREE.BoxGeometry(1.45, 0.07, 0.05), wood("planks", 1, [1, 0.1]));
   brace.position.y = 0.6;
   brace.rotation.z = 0.42;
   gateGroup.add(brace);
@@ -65,7 +66,7 @@ export function gate(radius: number, seed: number): DioramaParts {
   // A signpost pointing up the trail.
   const sign = post(1.2);
   sign.position.set(1.5, 0, 0.6);
-  const board = mesh(new THREE.BoxGeometry(0.62, 0.16, 0.05), solid("#9a7045", 0.8));
+  const board = mesh(new THREE.BoxGeometry(0.62, 0.16, 0.05), wood("planks", 1.1, [0.5, 0.15]));
   board.position.set(1.72, 1.02, 0.6);
   board.rotation.z = 0.08;
   group.add(sign, board);
@@ -77,7 +78,7 @@ export function gate(radius: number, seed: number): DioramaParts {
     update(_dt, time, calm, lv) {
       puddle.update(time, lv.rain);
       const wet = 0.35 + lv.rain * 0.65;
-      puddle.mesh.scale.set(wet, wet, 1);
+      puddle.mesh.scale.set(wet, 1, wet);
       flock.forEach((s, i) => {
         s.rotation.z = calm ? 0 : Math.max(0, Math.sin(time * 0.9 + i * 2.1)) * 0.12;
       });
@@ -95,11 +96,7 @@ export function ford(radius: number, seed: number): DioramaParts {
     ]),
   );
   // The beck: a band of dark, glossy water crossing the plinth.
-  const bed = mesh(
-    new THREE.BoxGeometry(1.0, 0.04, radius * 2 - 0.25),
-    solid("#2b3a34", 1),
-    "receive",
-  );
+  const bed = mesh(new THREE.BoxGeometry(1.0, 0.04, radius * 2 - 0.25), pebbles([1, 4]), "receive");
   bed.position.y = 0.01;
   const beck = water(1.0, radius * 2 - 0.25, false, 1);
   group.add(bed, beck.mesh);
@@ -111,14 +108,18 @@ export function ford(radius: number, seed: number): DioramaParts {
     group.add(bank);
   }
   // Stepping stones, only visible with the fog bottled.
-  const stoneMat = new THREE.MeshStandardMaterial({
-    color: "#a39f93",
-    roughness: 0.7,
-    transparent: true,
-  });
+  // Flat-topped scanned rocks, pressed into the beck bed.
+  const scans = assets().rocks;
+  const first = scans[0] as Scan;
+  const stoneMat = first.material.clone();
+  stoneMat.transparent = true;
   const stones: THREE.Mesh[] = [];
   for (let i = 0; i < 4; i++) {
-    const s = mesh(new THREE.CylinderGeometry(0.17, 0.2, 0.12, 9), stoneMat);
+    const scan = scans[(i * 3 + 1) % scans.length] as Scan;
+    const s = mesh(scan.geometry, stoneMat);
+    const k = 0.2 / scan.radius;
+    s.scale.set(k, k * 0.45, k);
+    s.rotation.y = i * 1.9;
     s.position.set(-0.75 + i * 0.5, 0.06, 0.25 + Math.sin(i * 1.7) * 0.18);
     stones.push(s);
     group.add(s);
@@ -145,9 +146,9 @@ export function hollow(radius: number, seed: number): DioramaParts {
   const group = plinth(radius, 1.8, seed);
   group.add(grass(radius, 220, seed, [{ x: 0, z: 0.1, r: 1.0 }]));
   // The ledge behind the hollow, too tall to climb.
-  const ledge = stone(0.95, seed + 2, 0.55);
-  ledge.scale.set(1.5, 1.9, 0.9);
-  ledge.position.set(0.1, 0.6, -1.5);
+  const ledge = boulder(1.05, seed + 2, 0.55);
+  ledge.scale.set(1.35, 1.5, 0.9);
+  ledge.position.set(0.1, 0, -1.5);
   group.add(ledge);
   // The dip itself and the ring of marker cairns with pale spiral marks.
   const dip = mesh(new THREE.CircleGeometry(0.65, 28), solid("#2f3a24", 1), "receive");

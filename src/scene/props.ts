@@ -1,108 +1,191 @@
 // Reusable trail props: plinths, stones, grass tufts, logs, posts and the hiker.
 
 import * as THREE from "three";
+import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+import { assets, type Scan } from "./assets";
 import { Jar } from "./jar";
-import { earthy, fbm, mesh, mix, PALETTE, rng, roughen, solid } from "./kit";
+import { fbm, mesh, PALETTE, rng, solid } from "./kit";
+import { terrainMaterial } from "./terrain";
 
-const SLATE = new THREE.Color("#5b6266");
-const RUST = new THREE.Color("#8a5d3e");
-
-/** A diorama plinth: a mossy cap over layered earth and stone, like a cut-out of hillside. */
+/**
+ * A diorama plinth: one smooth lathed mass, flat turf on top rolling over a lip into a rocky
+ * underside that tapers to a ragged tip. Noise displaces the sides; the top stays level so props
+ * sit on it. Vertex colours: baked occlusion (R), per-island variation (G), rim nearness (B).
+ */
 export function plinth(radius: number, depth: number, seed: number): THREE.Group {
   const group = new THREE.Group();
-  const body = new THREE.CylinderGeometry(radius, radius * 0.72, depth, 36, 6);
-  body.translate(0, -depth / 2, 0);
-  const g = roughen(body, 0.45, 0.9, seed, (p, n) => {
-    const t = -p.y / depth;
-    if (t < 0.07) return mix(PALETTE.mossDeep, PALETTE.moss, n);
-    if (t < 0.13 && n > 0.45) return mix(PALETTE.earthDeep, PALETTE.mossDeep, 0.6);
-    // Strata of damp earth, slate, rust-stained and lichen-pale stone, darker towards the tip.
-    const band = fbm(p.x * 0.6 + seed, p.y * 3.2, p.z * 0.6);
-    const strata = Math.sin(p.y * 7 + n * 4) * 0.5 + 0.5;
-    let c = mix(PALETTE.earth, SLATE, strata * 0.6);
-    if (band > 0.6) c = mix(c, RUST, (band - 0.6) * 2.5);
-    else if (band < 0.36) c = mix(c, PALETTE.lichen, (0.36 - band) * 1.8);
-    if (n > 0.64) c = mix(c, PALETTE.stoneWet, 0.5);
-    return mix(c, PALETTE.earthDeep, t * 0.75);
-  });
-  group.add(mesh(g, earthy()));
-  const cap = new THREE.CircleGeometry(radius * 0.99, 40, 0, Math.PI * 2);
-  cap.rotateX(-Math.PI / 2);
-  const capG = roughen(cap, 0.08, 1.4, seed + 3, (_p, n) =>
-    n > 0.6
-      ? mix(PALETTE.grass, PALETTE.lichen, (n - 0.6) * 2)
-      : mix(PALETTE.mossDeep, PALETTE.moss, n * 1.4),
-  );
-  const capMesh = mesh(capG, earthy(), "receive");
-  capMesh.position.y = 0.02;
-  group.add(capMesh);
+  const r = rng(seed);
+  const profile: THREE.Vector2[] = [
+    new THREE.Vector2(0.001, 0.02),
+    new THREE.Vector2(radius * 0.5, 0.015),
+    new THREE.Vector2(radius * 0.88, 0.0),
+    new THREE.Vector2(radius * 0.97, -0.05),
+    new THREE.Vector2(radius, -0.14),
+    new THREE.Vector2(radius * 0.98, -0.3),
+  ];
+  const steps = 9;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const w = radius * (0.98 - 0.8 * t ** 1.3) * (0.92 + r() * 0.16);
+    profile.push(new THREE.Vector2(Math.max(0.05, w), -0.3 - (depth - 0.3) * t));
+  }
+  profile.push(new THREE.Vector2(0.001, -depth - 0.2));
+  const lathe = new THREE.LatheGeometry(profile, 72);
+  lathe.deleteAttribute("uv");
+  lathe.deleteAttribute("normal");
+  const geo = mergeVertices(lathe, 1e-4);
+  const pos = geo.getAttribute("position") as THREE.BufferAttribute;
+  const colors = new Float32Array(pos.count * 3);
+  const p = new THREE.Vector3();
+  const variation = 0.35 + r() * 0.3;
+  for (let i = 0; i < pos.count; i++) {
+    p.fromBufferAttribute(pos, i);
+    const below = Math.max(0, -p.y);
+    const side = Math.min(1, below / 0.25);
+    const n = fbm(p.x * 0.9 + seed, p.y * 1.4, p.z * 0.9 - seed);
+    const n2 = fbm(p.x * 3.1, p.y * 3.3 + seed, p.z * 3.1);
+    const len = Math.hypot(p.x, p.z) || 1;
+    const push = side * ((n - 0.5) * 0.7 + (n2 - 0.5) * 0.18) * Math.min(1, len / 0.4);
+    p.x += (p.x / len) * push;
+    p.z += (p.z / len) * push;
+    p.y += side * (n2 - 0.5) * 0.2 + (1 - side) * (n2 - 0.5) * 0.015;
+    pos.setXYZ(i, p.x, p.y, p.z);
+    const ao = 1 - Math.min(0.5, (below / depth) * 0.45) - Math.max(0, 0.5 - n) * 0.35 * side;
+    colors[i * 3] = ao;
+    colors[i * 3 + 1] = variation + (n - 0.5) * 0.3;
+    colors[i * 3 + 2] = 1 - Math.min(1, below / 0.55);
+  }
+  geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  const terrain = terrainMaterial(seed);
+  const m = mesh(geo, terrain.material);
+  group.add(m);
+  group.userData.terrain = terrain;
   return group;
 }
 
-export function stone(size: number, seed: number, wet = 0.4): THREE.Mesh {
-  const geo = new THREE.IcosahedronGeometry(size, 2);
-  geo.scale(1, 0.62, 0.9);
-  const g = roughen(geo, size * 0.5, 2.2 / size, seed, (p, n) => {
-    const top = p.y > size * 0.25 && n > 0.55;
-    const base = mix(PALETTE.stone, PALETTE.stoneWet, wet + (0.5 - n) * 0.6);
-    return top ? mix(base, PALETTE.moss, 0.7) : base;
-  });
-  return mesh(g, earthy(0.78));
+const tints = new Map<string, THREE.MeshStandardMaterial>();
+
+/** A scan's material with one of a few hue and value shifts, darker when it sits in the wet. */
+function tinted(
+  base: THREE.MeshStandardMaterial,
+  variant: number,
+  wet: number,
+): THREE.MeshStandardMaterial {
+  const key = `${base.uuid}/${variant}/${wet.toFixed(1)}`;
+  let m = tints.get(key);
+  if (!m) {
+    m = base.clone();
+    const hsl = [
+      [0, 0, 1],
+      [0.02, -0.05, 0.92],
+      [-0.015, 0.04, 1.06],
+    ][variant] ?? [0, 0, 1];
+    m.color
+      .setHSL(0.1 + (hsl[0] ?? 0), 0.08 + (hsl[1] ?? 0), 0.5)
+      .multiplyScalar(2 * (hsl[2] ?? 1));
+    m.color.lerp(new THREE.Color(1, 1, 1), 0.55).multiplyScalar(1 - wet * 0.3);
+    m.roughness = 1 - wet * 0.25;
+    tints.set(key, m);
+  }
+  return m;
 }
 
-/** Instanced bent-grass tufts scattered over a disc, avoiding a cleared radius list. */
-export function grass(
-  radius: number,
-  count: number,
-  seed: number,
-  clear: { x: number; z: number; r: number }[] = [],
-): THREE.InstancedMesh {
-  const blade = new THREE.ConeGeometry(0.022, 0.2, 3, 1);
-  blade.translate(0, 0.1, 0);
-  const mat = solid(PALETTE.grass, 0.9);
-  const inst = new THREE.InstancedMesh(blade, mat, count);
-  const r = rng(seed);
-  const m = new THREE.Matrix4();
-  const q = new THREE.Quaternion();
-  const e = new THREE.Euler();
-  const c = new THREE.Color();
-  let placed = 0;
-  for (let tries = 0; placed < count && tries < count * 6; tries++) {
-    const a = r() * Math.PI * 2;
-    const d = Math.sqrt(r()) * radius * 0.94;
-    const x = Math.cos(a) * d;
-    const z = Math.sin(a) * d;
-    if (clear.some((k) => (x - k.x) ** 2 + (z - k.z) ** 2 < k.r * k.r)) continue;
-    e.set((r() - 0.5) * 0.7, r() * Math.PI, (r() - 0.3) * 0.6);
-    q.setFromEuler(e);
-    const s = 0.55 + r() * 0.6;
-    m.compose(new THREE.Vector3(x, 0, z), q, new THREE.Vector3(s, s * (0.7 + r()), s));
-    inst.setMatrixAt(placed, m);
-    inst.setColorAt(
-      placed,
-      c
-        .copy(PALETTE.grass)
-        .lerp(PALETTE.lichen, r() * 0.5)
-        .offsetHSL(0, 0, (r() - 0.5) * 0.08),
-    );
-    placed++;
+function seat(scan: Scan, size: number, seed: number, wet: number, sink: number): THREE.Group {
+  const r = rng(seed * 7 + 3);
+  const k = (size / scan.radius) * (0.85 + r() * 0.3);
+  const m = mesh(scan.geometry, tinted(scan.material, Math.floor(r() * 3), wet));
+  m.scale.set(k, k * (0.8 + r() * 0.4), k);
+  m.rotation.y = r() * Math.PI * 2;
+  m.position.y = -scan.height * m.scale.y * sink;
+  const g = new THREE.Group();
+  g.add(m);
+  return g;
+}
+
+/** A scanned mossy rock about `size` in radius, turned and scaled at random and seated. */
+export function stone(size: number, seed: number, wet = 0.4): THREE.Group {
+  const { rocks } = assets();
+  const scan = rocks[Math.floor(rng(seed)() * rocks.length) % rocks.length] as Scan;
+  return seat(scan, size, seed, wet, 0.18);
+}
+
+/** The scanned boulder, for ledges and cliffs. */
+export function boulder(size: number, seed: number, wet = 0.4): THREE.Group {
+  return seat(assets().boulder, size, seed, wet, 0.12);
+}
+
+export { flowers, grassField as grass } from "./foliage";
+
+const woods = new Map<string, THREE.MeshStandardMaterial>();
+
+/** Scanned wood: weathered planks for joinery, bark for logs. `repeat` sets texel density. */
+export function wood(kind: "planks" | "bark", tone = 1, repeat: [number, number] = [1, 1]) {
+  const key = `${kind}/${tone}/${repeat.join("x")}`;
+  let m = woods.get(key);
+  if (!m) {
+    const set = assets().sets[kind === "planks" ? "weathered_planks" : "bark_brown_02"];
+    const tile = (t: THREE.Texture) => {
+      const c = t.clone();
+      c.repeat.set(repeat[0], repeat[1]);
+      c.needsUpdate = true;
+      return c;
+    };
+    m = new THREE.MeshStandardMaterial({
+      map: tile(set.colour),
+      normalMap: tile(set.normal),
+      roughnessMap: tile(set.arm),
+      aoMap: tile(set.arm),
+      aoMapIntensity: 0.8,
+      color: new THREE.Color(tone, tone, tone),
+    });
+    woods.set(key, m);
   }
-  inst.count = placed;
-  inst.castShadow = true;
-  inst.receiveShadow = true;
-  return inst;
+  return m;
+}
+
+function scanned(
+  set: "mossy_rock" | "grass_ground" | "river_small_rocks",
+  repeat: [number, number],
+  tone: number,
+) {
+  const src = assets().sets[set];
+  const tile = (t: THREE.Texture) => {
+    const c = t.clone();
+    c.repeat.set(repeat[0], repeat[1]);
+    c.needsUpdate = true;
+    return c;
+  };
+  return new THREE.MeshStandardMaterial({
+    map: tile(src.colour),
+    normalMap: tile(src.normal),
+    roughnessMap: tile(src.arm),
+    aoMap: tile(src.arm),
+    color: new THREE.Color(tone, tone, tone),
+  });
+}
+
+/** Mossy stone masonry for the shelter's walls. */
+export function masonry(repeat: [number, number]): THREE.MeshStandardMaterial {
+  return scanned("mossy_rock", repeat, 0.95);
+}
+
+/** River pebbles for the beck and tarn beds, seen through the water. */
+export function pebbles(repeat: [number, number]): THREE.MeshStandardMaterial {
+  return scanned("river_small_rocks", repeat, 0.8);
+}
+
+/** Turf laid on the shelter roof. */
+export function turfRoof(): THREE.MeshStandardMaterial {
+  return scanned("grass_ground", [2, 1], 0.9);
 }
 
 export function log(length: number, radius: number, seed: number): THREE.Group {
   const g = new THREE.Group();
-  const geo = new THREE.CylinderGeometry(radius, radius * 1.05, length, 14, 4);
+  const geo = new THREE.CylinderGeometry(radius, radius * 1.05, length, 20, 1);
   geo.rotateZ(Math.PI / 2);
-  const body = roughen(geo, radius * 0.25, 3, seed, (p, n) =>
-    p.y > radius * 0.5 && n > 0.45
-      ? mix(PALETTE.moss, PALETTE.mossDeep, n)
-      : mix(PALETTE.wood, PALETTE.woodDark, n),
-  );
-  g.add(mesh(body, earthy(0.85)));
+  const body = mesh(geo, wood("bark", 0.9 + rng(seed)() * 0.2, [2, length * 2]));
+  g.add(body);
   for (const side of [-1, 1]) {
     const end = new THREE.CircleGeometry(radius * 0.96, 14);
     end.rotateY((side * Math.PI) / 2);
@@ -113,10 +196,10 @@ export function log(length: number, radius: number, seed: number): THREE.Group {
   return g;
 }
 
-export function post(height: number, color: THREE.ColorRepresentation = PALETTE.wood): THREE.Mesh {
+export function post(height: number, tone = 1): THREE.Mesh {
   const geo = new THREE.BoxGeometry(0.12, height, 0.12);
   geo.translate(0, height / 2, 0);
-  return mesh(geo, solid(color, 0.85));
+  return mesh(geo, wood("planks", tone, [0.15, Math.max(0.3, height * 0.6)]));
 }
 
 /** The hiker: wool hat, coat, pack and the jar at the hip. */
@@ -176,26 +259,6 @@ export function sheep(seed: number): THREE.Group {
   return g;
 }
 
-/** Instanced meadow flowers: little heads of yellow, white and heather on short stems. */
-export function flowers(radius: number, count: number, seed: number): THREE.InstancedMesh {
-  const head = new THREE.IcosahedronGeometry(0.03, 0);
-  head.translate(0, 0.08, 0);
-  const inst = new THREE.InstancedMesh(head, solid("#ffffff", 0.7), count);
-  const r = rng(seed);
-  const colors = ["#f2d04b", "#f4efe2", "#b77bb8", "#e9a1b0"].map((c) => new THREE.Color(c));
-  const m = new THREE.Matrix4();
-  for (let i = 0; i < count; i++) {
-    const a = r() * Math.PI * 2;
-    const d = Math.sqrt(r()) * radius * 0.92;
-    const s = 0.7 + r() * 0.8;
-    m.makeScale(s, s, s).setPosition(Math.cos(a) * d, 0, Math.sin(a) * d);
-    inst.setMatrixAt(i, m);
-    inst.setColorAt(i, colors[i % colors.length] ?? colors[0] ?? new THREE.Color());
-  }
-  inst.castShadow = true;
-  return inst;
-}
-
 /** A small painted board naming the diorama, on a stake at the plinth edge. */
 export function nameBoard(text: string): THREE.Group {
   const canvas = document.createElement("canvas");
@@ -218,8 +281,8 @@ export function nameBoard(text: string): THREE.Group {
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   const g = new THREE.Group();
-  const stake = post(0.5, PALETTE.woodDark);
-  const edge = solid("#5a3d24");
+  const stake = post(0.5, 0.7);
+  const edge = wood("planks", 0.6, [0.5, 0.2]);
   const board = mesh(new THREE.BoxGeometry(0.72, 0.18, 0.03), [
     edge,
     edge,

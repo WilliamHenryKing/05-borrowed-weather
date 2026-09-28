@@ -3,7 +3,7 @@
 import * as THREE from "three";
 import type { DioramaParts } from "./diorama";
 import { mesh, PALETTE, rng, solid } from "./kit";
-import { grass, log, plinth, post, stone } from "./props";
+import { boulder, grass, log, pebbles, plinth, post, stone, wood } from "./props";
 import { water } from "./water";
 
 /** A fern frond as a chain of leaflets; `curl` 1 rolls it into a fiddlehead, 0 lays it flat. */
@@ -28,12 +28,12 @@ function frond(segments: number): { root: THREE.Group; joints: THREE.Group[] } {
 export function terrace(radius: number, seed: number): DioramaParts {
   const group = plinth(radius, 2.2, seed);
   group.add(grass(radius, 200, seed, [{ x: 0.8, z: -0.5, r: 0.8 }]));
-  const cliff = stone(1.1, seed + 3, 0.6);
-  cliff.scale.set(1.4, 2.4, 0.7);
-  cliff.position.set(-0.9, 1.1, -1.5);
+  const cliff = boulder(1.15, seed + 3, 0.6);
+  cliff.scale.set(1.3, 2.1, 0.75);
+  cliff.position.set(-0.9, 0, -1.5);
   group.add(cliff);
   // Wind vane: a tall mast with four cloth sails that drive the basket lift.
-  const mast = post(2.4, PALETTE.woodDark);
+  const mast = post(2.4, 0.7);
   mast.position.set(1.2, 0, -1.0);
   const hub = new THREE.Group();
   hub.position.set(1.2, 2.3, -0.9);
@@ -55,7 +55,7 @@ export function terrace(radius: number, seed: number): DioramaParts {
   );
   rope.position.set(1.2, 2.0, -0.4);
   rope.rotation.x = -0.35;
-  const basket = mesh(new THREE.CylinderGeometry(0.2, 0.16, 0.22, 10), solid("#9b6f3e", 0.9));
+  const basket = mesh(new THREE.CylinderGeometry(0.2, 0.16, 0.22, 10), wood("bark", 1.2, [2, 0.5]));
   group.add(rope, basket);
   // Fern stair: fronds sprouting from the cliff face at rising heights.
   const ferns = [0, 1, 2, 3].map((i) => {
@@ -94,10 +94,14 @@ export function terrace(radius: number, seed: number): DioramaParts {
 export function tarn(radius: number, seed: number): DioramaParts {
   const group = plinth(radius, 1.6, seed);
   group.add(grass(radius, 140, seed, [{ x: 0.2, z: -0.3, r: 1.6 }]));
+  const bed = mesh(new THREE.CircleGeometry(1.5, 48), pebbles([3, 3]), "receive");
+  bed.rotation.x = -Math.PI / 2;
+  bed.position.set(0.2, 0.025, -0.3);
+  group.add(bed);
   const pool = water(3.1, 3.1, true, 0.15);
   pool.mesh.position.set(0.2, 0.04, -0.3);
   group.add(pool.mesh);
-  const jetty = mesh(new THREE.BoxGeometry(0.5, 0.06, 0.9), solid(PALETTE.wood, 0.9));
+  const jetty = mesh(new THREE.BoxGeometry(0.5, 0.06, 0.9), wood("planks", 1, [0.5, 0.9]));
   jetty.position.set(-0.6, 0.1, 1.0);
   group.add(jetty);
   // The leaf ferry: a broad leaf hull with a little sail.
@@ -128,7 +132,7 @@ export function tarn(radius: number, seed: number): DioramaParts {
   });
   const lane: THREE.Object3D[] = [];
   for (let i = 0; i < 4; i++) {
-    const p = post(0.55, PALETTE.woodDark);
+    const p = post(0.55, 0.7);
     const bulb = mesh(new THREE.SphereGeometry(0.06, 8, 6), bulbMat, "none");
     bulb.position.y = 0.6;
     const g = new THREE.Group();

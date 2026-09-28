@@ -1,5 +1,7 @@
-// Living water: drifting fbm ripples, a fresnel sheen with a low-sun glint, a pale foam
-// edge where it meets stone and grass, and rain rings while rain falls on it.
+// Living water in two layers. The surface is a physical transmission material: it refracts the
+// pebble bed below, reflects the HDRI sky through the environment, and carries a tileable
+// ripple normal map scrolling with the flow. Over it, a thin shader layer adds only a pale foam
+// line where water meets stone and turf, and rain rings while rain falls on it.
 
 import * as THREE from "three";
 
@@ -64,17 +66,63 @@ void main() {
   float edge = disc > 0.5 ? 1.0 - length(c) : 1.0 - abs(c.x);
   float churn = noise(p * 2.5 + f * 2.0 + time * 0.3);
   float froth = smoothstep(0.2, 0.0, edge - churn * 0.12);
-  vec3 col = mix(deep, shallow, 0.25 + h0 * 0.5);
-  col = mix(col, sky, fres * 0.55) + spec * vec3(1.0, 0.92, 0.78) * 1.4;
-  col = mix(col, foam, froth * 0.85);
-  float alpha = mix(0.9, 0.97, froth) * smoothstep(0.0, 0.04, edge + 0.02);
+  // Foam and rain rings only: the surface below does reflection and refraction.
+  vec3 col = mix(foam, sky, 0.2) * (0.8 + h0 * 0.3) + spec * vec3(1.0, 0.92, 0.78) * 0.4;
+  float alpha = froth * 0.8 + ring * rain * 0.35 + fres * 0.04;
+  alpha *= smoothstep(0.0, 0.03, edge + 0.01);
   gl_FragColor = vec4(col, alpha);
   #include <fog_fragment>
 }`;
 
 export interface Water {
-  readonly mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>;
+  readonly mesh: THREE.Group;
+  /** The foam overlay, which the AO pass should skip. */
+  readonly overlay: THREE.Object3D;
   update(time: number, rain: number): void;
+}
+
+let ripples: THREE.DataTexture | null = null;
+
+/** A tileable ripple normal map: sums of waves whose frequencies are whole numbers per tile. */
+function rippleNormals(): THREE.DataTexture {
+  if (ripples) return ripples;
+  const n = 256;
+  const data = new Uint8Array(n * n * 4);
+  const waves = Array.from({ length: 14 }, (_, i) => {
+    const a = i * 2.39996;
+    const k = 2 + (i % 7) * 1.5;
+    return {
+      kx: Math.round(Math.cos(a) * k),
+      ky: Math.round(Math.sin(a) * k),
+      amp: 1 / (1 + i * 0.35),
+      ph: i * 1.7,
+    };
+  });
+  for (let y = 0; y < n; y++)
+    for (let x = 0; x < n; x++) {
+      let dx = 0;
+      let dy = 0;
+      for (const w of waves) {
+        const t = ((w.kx * x + w.ky * y) / n) * Math.PI * 2 + w.ph;
+        const c = Math.cos(t) * w.amp;
+        dx += c * w.kx;
+        dy += c * w.ky;
+      }
+      const v = new THREE.Vector3(-dx * 0.02, -dy * 0.02, 1).normalize();
+      const i = (y * n + x) * 4;
+      data[i] = (v.x * 0.5 + 0.5) * 255;
+      data[i + 1] = (v.y * 0.5 + 0.5) * 255;
+      data[i + 2] = (v.z * 0.5 + 0.5) * 255;
+      data[i + 3] = 255;
+    }
+  ripples = new THREE.DataTexture(data, n, n, THREE.RGBAFormat);
+  ripples.wrapS = ripples.wrapT = THREE.RepeatWrapping;
+  ripples.magFilter = THREE.LinearFilter;
+  ripples.minFilter = THREE.LinearMipmapLinearFilter;
+  ripples.generateMipmaps = true;
+  ripples.colorSpace = THREE.NoColorSpace;
+  ripples.needsUpdate = true;
+  return ripples;
 }
 
 /** A strip of flowing beck (`disc` false) or a still round tarn or puddle (`disc` true). */
@@ -98,15 +146,44 @@ export function water(width: number, depth: number, disc: boolean, flow = 1): Wa
       },
     ]),
   });
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), mat);
-  m.rotation.x = -Math.PI / 2;
-  m.receiveShadow = true;
+  const overlay = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), mat);
+  overlay.rotation.x = -Math.PI / 2;
+  overlay.position.y = 0.004;
+  overlay.renderOrder = 2;
+  const normals = rippleNormals().clone();
+  normals.repeat.set(width * 1.2, depth * 1.2);
+  normals.needsUpdate = true;
+  const surfaceGeo = disc
+    ? new THREE.CircleGeometry(Math.min(width, depth) / 2, 48)
+    : new THREE.PlaneGeometry(width, depth);
+  const surface = new THREE.Mesh(
+    surfaceGeo,
+    new THREE.MeshPhysicalMaterial({
+      color: "#ffffff",
+      roughness: 0.05,
+      metalness: 0,
+      transmission: 1,
+      thickness: 0.25,
+      ior: 1.333,
+      attenuationColor: new THREE.Color("#5d7f72"),
+      attenuationDistance: 0.35,
+      normalMap: normals,
+      normalScale: new THREE.Vector2(0.35, 0.35),
+      specularIntensity: 1,
+    }),
+  );
+  surface.rotation.x = -Math.PI / 2;
+  surface.receiveShadow = true;
+  const group = new THREE.Group();
+  group.add(surface, overlay);
   const u = mat.uniforms as Record<string, THREE.IUniform<number>>;
   return {
-    mesh: m,
+    mesh: group,
+    overlay,
     update(time, rain) {
       if (u.time) u.time.value = time;
       if (u.rain) u.rain.value = rain;
+      normals.offset.set(time * 0.013, -time * 0.05 * flow - time * 0.008);
     },
   };
 }

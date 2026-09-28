@@ -5,7 +5,7 @@
 import * as THREE from "three";
 import type { DioramaParts } from "./diorama";
 import { mesh, PALETTE, puffTexture, rng, solid } from "./kit";
-import { flowers, grass, log, plinth, post, stone } from "./props";
+import { flowers, grass, log, masonry, plinth, post, stone, turfRoof, wood } from "./props";
 
 const KINDS = ["fog", "rain", "wind"] as const;
 
@@ -14,12 +14,22 @@ export function shelter(radius: number, seed: number): DioramaParts {
   group.add(grass(radius, 160, seed, [{ x: 0, z: -0.6, r: 1.1 }]), flowers(radius, 30, seed + 2));
   // The hut: thick stone walls, a turf roof, a door and two small windows.
   const hut = new THREE.Group();
-  const walls = stone(0.75, seed + 4, 0.4);
-  walls.scale.set(1.3, 1.25, 1.1);
+  const walls = mesh(new THREE.BoxGeometry(1.7, 1.1, 1.4), masonry([1.6, 1.1]));
   walls.position.y = 0.55;
-  const door = mesh(new THREE.BoxGeometry(0.34, 0.6, 0.05), solid("#2a1f18", 1), "none");
+  // Dry-stone footing: scanned rocks along the base, so the walls sit in the turf.
+  for (let i = 0; i < 10; i++) {
+    const s = stone(0.14 + (i % 3) * 0.03, seed + 40 + i, 0.5);
+    const a = (i / 10) * Math.PI * 2;
+    s.position.set(Math.cos(a) * 0.95, 0, Math.sin(a) * 0.8);
+    hut.add(s);
+  }
+  const door = mesh(
+    new THREE.BoxGeometry(0.34, 0.6, 0.05),
+    wood("planks", 0.45, [0.4, 0.6]),
+    "none",
+  );
   door.position.set(0, 0.32, 0.72);
-  const roof = mesh(new THREE.ConeGeometry(1.25, 0.8, 4), solid("#5c6e3c", 1));
+  const roof = mesh(new THREE.ConeGeometry(1.35, 0.8, 4), turfRoof());
   roof.rotation.y = Math.PI / 4;
   roof.position.y = 1.45;
   const windowMat = new THREE.MeshStandardMaterial({
@@ -79,7 +89,7 @@ export function shelter(radius: number, seed: number): DioramaParts {
     a.rotation.y = (i * Math.PI * 2) / 3;
     vane.add(a);
   }
-  const vanePost = post(1.2, PALETTE.woodDark);
+  const vanePost = post(1.2, 0.7);
   vanePost.position.set(1.2, 0, 0.3);
   vane.position.set(1.2, 1.22, 0.3);
   const glassMat = new THREE.MeshPhysicalMaterial({
@@ -108,7 +118,7 @@ export function shelter(radius: number, seed: number): DioramaParts {
   });
   const orbCore = mesh(new THREE.SphereGeometry(0.12, 14, 10), coreMat, "none");
   orbCore.position.copy(orb.position);
-  const stand = post(0.46, PALETTE.woodDark);
+  const stand = post(0.46, 0.7);
   stand.position.set(-0.7, 0, 1.0);
   const seat = log(0.9, 0.14, seed + 3);
   seat.position.set(0.9, 0.14, 1.3);

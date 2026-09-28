@@ -5,15 +5,20 @@ import gsap from "gsap";
 import * as THREE from "three";
 import { type GameState, openRoutes } from "../game/state";
 import { LOCATION_INFO, LOCATIONS, type LocationId, ROUTES } from "../game/world";
+import type { Assets } from "./assets";
 import { Backdrop } from "./backdrop";
+import { CloudFloor } from "./cloud-floor";
 import type { DioramaParts } from "./diorama";
+import { setFoliageDensity, setWind } from "./foliage";
 import { tarn, terrace } from "./highlands";
 import { mesh, PALETTE, rng } from "./kit";
 import { BOOKMARKS, type BookmarkName, followPose, LAYOUT, type Pose, RADIUS } from "./layout";
 import { ford, gate, hollow } from "./lowlands";
 import { hiker, nameBoard, stone } from "./props";
+import type { Quality } from "./render/pipeline";
 import { shelter } from "./shelter";
 import { Stage } from "./stage";
+import type { TerrainHandle } from "./terrain";
 import { Transfer } from "./transfer";
 import { WeatherCell } from "./weather";
 
@@ -33,6 +38,7 @@ export class TrailScene {
   private readonly walker = hiker();
   private readonly transfer = new Transfer();
   private readonly backdrop: Backdrop;
+  private readonly cloudFloor: CloudFloor;
   private readonly focus = new THREE.Vector3();
   private readonly pointer = new THREE.Vector2();
   private readonly raycaster = new THREE.Raycaster();
@@ -42,11 +48,18 @@ export class TrailScene {
   private bookmark: BookmarkName | null = null;
   onPick: (id: LocationId) => void = () => {};
 
-  constructor(host: HTMLElement, calm: boolean, onReady: () => void) {
+  constructor(
+    host: HTMLElement,
+    calm: boolean,
+    onReady: () => void,
+    loaded: Assets,
+    quality: Quality,
+  ) {
     this.calm = calm;
     // Keep tweens on wall-clock time: slow devices jump rather than crawl in slow motion.
     gsap.ticker.lagSmoothing(0);
-    this.stage = new Stage(host);
+    setFoliageDensity(quality === "high" ? 1 : 0.35);
+    this.stage = new Stage(host, quality, loaded);
     this.stage.onFirstFrame = onReady;
     LOCATIONS.forEach((id, i) => {
       const parts = BUILD[id](RADIUS, 11 + i * 17);
@@ -74,7 +87,28 @@ export class TrailScene {
       new THREE.Vector3(...LAYOUT.hollow).lerp(new THREE.Vector3(...LAYOUT.terrace), 0.5),
       new THREE.Vector3(...LAYOUT.shelter),
     );
-    this.stage.scene.add(this.backdrop.group, this.walker.group, this.transfer.group);
+    this.cloudFloor = new CloudFloor(
+      this.stage.sky,
+      -11,
+      new THREE.Vector3(...LAYOUT.hollow).lerp(new THREE.Vector3(...LAYOUT.terrace), 0.5),
+    );
+    this.stage.scene.add(
+      this.backdrop.group,
+      this.walker.group,
+      this.transfer.group,
+      this.cloudFloor.mesh,
+    );
+    this.stage.aoHidden.push(this.cloudFloor.mesh);
+    // Transparent effects (fog, rain, wind, water, sprites, glass) stay out of the AO G-buffer.
+    this.stage.scene.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+      const mats = Array.isArray(m) ? m : m ? [m] : [];
+      const see = mats.some(
+        (x) => x.transparent || (x as THREE.MeshPhysicalMaterial).transmission > 0,
+      );
+      if (see || o instanceof THREE.Sprite || o instanceof THREE.LineSegments)
+        this.stage.aoHidden.push(o);
+    });
     this.stage.onFrame = (dt, t) => this.frame(dt, t);
     this.stage.renderer.domElement.addEventListener("pointerdown", this.onDown);
     this.stage.renderer.domElement.addEventListener("pointerup", this.onUp);
@@ -186,8 +220,11 @@ export class TrailScene {
   private frame(dt: number, time: number): void {
     const s = this.state;
     if (!s) return;
+    setWind(time, this.calm ? 0.15 : 1);
     for (const stop of this.stops) {
       stop.cell.update(dt, time, this.calm);
+      const terrain = stop.parts.group.userData.terrain as TerrainHandle | undefined;
+      if (terrain) terrain.wetness.value = stop.cell.level.rain;
       stop.parts.update(dt, time, this.calm, stop.cell.level, s);
     }
     const cam = this.stage.camera;
@@ -203,6 +240,7 @@ export class TrailScene {
     this.walker.jar.update(time, this.calm);
     this.transfer.update(dt);
     this.backdrop.update(time, this.calm);
+    this.cloudFloor.update(this.calm ? 0 : time);
   }
 
   private pick(clientX: number, clientY: number): LocationId | null {

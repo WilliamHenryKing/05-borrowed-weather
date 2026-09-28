@@ -1,5 +1,5 @@
 // Capture every camera bookmark from the production build in headless Chromium.
-// Usage: bun run build && node tools/visual/capture.mjs <label>
+// Usage: bun run build && node tools/visual/capture.mjs <label> [bookmark,bookmark]
 // Writes docs/visual/captures/<label>/<bookmark>.png and renderer.txt.
 
 import { spawn } from "node:child_process";
@@ -7,6 +7,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
 
 const label = process.argv[2] ?? "latest";
+const only = process.argv[3]?.split(",");
 const out = `docs/visual/captures/${label}`;
 const url = "http://127.0.0.1:4615/?e2e";
 mkdirSync(out, { recursive: true });
@@ -37,7 +38,7 @@ const browser = await chromium.launch({
   args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
 });
 let renderer = "";
-for (const shot of SHOTS) {
+for (const shot of SHOTS.filter((s) => !only || only.includes(s.name))) {
   const context = await browser.newContext({
     viewport: shot.viewport,
     deviceScaleFactor: shot.dpr,
@@ -48,8 +49,9 @@ for (const shot of SHOTS) {
   const page = await context.newPage();
   await page.goto(url);
   await page.waitForFunction(() => window.__VISUAL_TEST__?.ready === true, null, {
-    timeout: 120_000,
+    timeout: 300_000,
   });
+  page.setDefaultTimeout(300_000);
   await page.getByRole("button", { name: "Set off" }).click();
   for (let i = 0; i < shot.walk; i++) await page.keyboard.press("ArrowRight");
   await page.waitForTimeout(shot.walk ? 4000 : 1500);
@@ -60,9 +62,11 @@ for (const shot of SHOTS) {
     await hook.settle(2);
     hook.freeze(true);
     await hook.settle(3);
+    hook.pause(true);
   }, shot.name);
   renderer = await page.evaluate(() => window.__VISUAL_TEST__.renderer);
-  await page.screenshot({ path: `${out}/${shot.name}.png` });
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${out}/${shot.name}.png`, timeout: 180_000 });
   console.log(`${out}/${shot.name}.png`);
   await context.close();
 }

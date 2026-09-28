@@ -9,6 +9,8 @@ import { hint as nextHint } from "../game/solver";
 import { type Action, apply, createGame, type GameState } from "../game/state";
 import { LOCATIONS, type LocationId, WEATHERS } from "../game/world";
 import { worldReady } from "../loader";
+import { loadAssets, setAssets } from "../scene/assets";
+import { detectQuality } from "../scene/render/pipeline";
 import { TrailScene } from "../scene/trail";
 import { installVisualTest, visualTestEnabled } from "../scene/visual-test";
 import { Hud } from "./Hud";
@@ -57,19 +59,34 @@ export function App() {
   useEffect(() => {
     const el = host.current;
     if (!el) return;
-    const trail = new TrailScene(el, reducedMotion(), () => requestAnimationFrame(worldReady));
-    trail.sync(gameRef.current, true);
-    trail.onPick = (to: LocationId) => act({ type: "travel", to });
-    trail.start();
-    scene.current = trail;
-    const removeHook = visualTestEnabled() ? installVisualTest(trail) : () => {};
+    let trail: TrailScene | null = null;
+    let removeHook = () => {};
+    let cancelled = false;
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const onMotion = () => trail.setCalm(mq.matches);
+    const onMotion = () => trail?.setCalm(mq.matches);
     mq.addEventListener("change", onMotion);
+    // Sourced assets load behind the arrival veil; the scene is built once they are ready.
+    void loadAssets().then((loaded) => {
+      if (cancelled) return;
+      setAssets(loaded);
+      trail = new TrailScene(
+        el,
+        reducedMotion(),
+        () => requestAnimationFrame(worldReady),
+        loaded,
+        detectQuality(),
+      );
+      trail.sync(gameRef.current, true);
+      trail.onPick = (to: LocationId) => act({ type: "travel", to });
+      trail.start();
+      scene.current = trail;
+      if (visualTestEnabled()) removeHook = installVisualTest(trail);
+    });
     return () => {
+      cancelled = true;
       mq.removeEventListener("change", onMotion);
       removeHook();
-      trail.dispose();
+      trail?.dispose();
       scene.current = null;
     };
   }, [act]);

@@ -3,7 +3,8 @@
 
 import * as THREE from "three";
 import { noisyPuffTexture } from "./fog";
-import { earthy, mix, PALETTE, rng, roughen } from "./kit";
+import { rng } from "./kit";
+import { plinth } from "./props";
 
 interface Drifter {
   sprite: THREE.Sprite;
@@ -20,21 +21,13 @@ export class Backdrop {
   /** `centre` is the middle of the trail; `summit` the shelter the cloud sea surrounds. */
   constructor(centre: THREE.Vector3, summit: THREE.Vector3) {
     const r = rng(41);
-    // Distant islands: rough inverted cones with mossy tops, lost in haze.
+    // Distant islands built like the near ones, softened by aerial perspective.
     for (let i = 0; i < 16; i++) {
       const a = -Math.PI * 0.95 + r() * Math.PI * 0.9;
       const d = 38 + r() * 22;
       const radius = 1.6 + r() * 2.8;
       const depth = radius * (0.9 + r() * 0.6);
-      const geo = new THREE.ConeGeometry(radius, depth, 16, 4);
-      geo.rotateX(Math.PI);
-      geo.translate(0, -depth / 2, 0);
-      const g = roughen(geo, radius * 0.35, 0.5, i * 7, (p, n) =>
-        p.y > -0.3
-          ? mix(PALETTE.mossDeep, PALETTE.moss, n)
-          : mix(PALETTE.earthDeep, PALETTE.stoneWet, n),
-      );
-      const island = new THREE.Mesh(g, earthy());
+      const island = plinth(radius, depth, 200 + i * 7);
       island.position.set(
         centre.x + Math.cos(a) * d,
         centre.y - 9 + r() * 9,
