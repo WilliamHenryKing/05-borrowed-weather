@@ -34,9 +34,12 @@ There is no timer. If you get stuck, **Hint** points to the next take or release
 bun install --frozen-lockfile
 bun run dev      # http://127.0.0.1:4515/
 bun run check    # tsc, Biome, bun test, production build into dist/
+bun run e2e      # Playwright: walks the whole trail to the shelter in headless Chromium
 ```
 
-Code layout: `src/game/` holds the pure rules, notebook and solver (tested in `tests/`). `src/scene/` holds the three.js dioramas, weather effects and camera. `src/ui/` holds the React HUD and panels. `src/main.tsx` wires them together. `development/` and `tools/studio/` are earlier tooling and are not part of the app.
+The end-to-end test builds and serves the app on port 4615, then plays the solver's route with the keyboard, checking the HUD after every step. It needs a Playwright Chromium (`bunx playwright install chromium` on a fresh machine). SwiftShader is fine.
+
+Code layout: `src/game/` holds the pure rules, notebook and solver (tested in `tests/`). `src/scene/` holds the three.js dioramas, shader fog and water, sky and backdrop, the jar and camera. `src/audio/` holds the sound board and its pure mixing rules. `src/ui/` holds the React HUD and panels. `src/main.tsx` wires them together. `development/` and `tools/studio/` are earlier tooling and are not part of the app.
 
 ## Credits
 
