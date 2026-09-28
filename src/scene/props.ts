@@ -2,7 +2,7 @@
 
 import * as THREE from "three";
 import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
-import { assets, type Scan } from "./assets";
+import { assets, type Scan, tiled } from "./assets";
 import { Jar } from "./jar";
 import { fbm, mesh, PALETTE, rng, solid } from "./kit";
 import { terrainMaterial } from "./terrain";
@@ -138,12 +138,7 @@ export function wood(kind: "planks" | "bark", tone = 1, repeat: [number, number]
   let m = woods.get(key);
   if (!m) {
     const set = assets().sets[kind === "planks" ? "weathered_planks" : "bark_brown_02"];
-    const tile = (t: THREE.Texture) => {
-      const c = t.clone();
-      c.repeat.set(repeat[0], repeat[1]);
-      c.needsUpdate = true;
-      return c;
-    };
+    const tile = (t: THREE.Texture) => tiled(t, repeat);
     m = new THREE.MeshStandardMaterial({
       map: tile(set.colour),
       normalMap: tile(set.normal),
@@ -163,12 +158,7 @@ function scanned(
   tone: number,
 ) {
   const src = assets().sets[set];
-  const tile = (t: THREE.Texture) => {
-    const c = t.clone();
-    c.repeat.set(repeat[0], repeat[1]);
-    c.needsUpdate = true;
-    return c;
-  };
+  const tile = (t: THREE.Texture) => tiled(t, repeat);
   return new THREE.MeshStandardMaterial({
     map: tile(src.colour),
     normalMap: tile(src.normal),

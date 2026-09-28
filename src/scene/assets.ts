@@ -83,12 +83,30 @@ function placeholder(rgb: [number, number, number], colour: boolean, url: string
     const real = await textureLoader.loadAsync(`${base}${url}`);
     (t.source as { data: unknown }).data = real.image;
     t.source.needsUpdate = true;
-    t.needsUpdate = true;
+    // The 1×1 stand-in was allocated as immutable storage: dispose so the GPU texture is
+    // re-created at the real size on next use.
+    for (const c of [t, ...(copies.get(t.source) ?? [])]) {
+      c.dispose();
+      c.needsUpdate = true;
+    }
   });
   return t;
 }
 
 const deferredFills: (() => Promise<void>)[] = [];
+/** Tiled copies share their original's source but re-upload only when their own version bumps. */
+const copies = new Map<object, THREE.Texture[]>();
+
+/** A copy of a set texture with its own repeat, kept in step when a placeholder fills in. */
+export function tiled(t: THREE.Texture, repeat: [number, number]): THREE.Texture {
+  const c = t.clone();
+  c.repeat.set(repeat[0], repeat[1]);
+  c.needsUpdate = true;
+  const list = copies.get(t.source) ?? [];
+  list.push(c);
+  copies.set(t.source, list);
+  return c;
+}
 
 function deferredSet(name: SetName): PbrSet {
   const path = `textures/${name}/${name}`;
