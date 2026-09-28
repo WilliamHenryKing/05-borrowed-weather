@@ -1,0 +1,574 @@
+{
+  "schemaVersion": 1,
+  "project": "borrowed-weather",
+  "policy": "CC0, public domain, NASA or CC-BY only; every shipped third-party file listed here",
+  "totalShippedBytes": 15135297,
+  "assets": [
+    {
+      "id": "polyhaven-table_mountain_1_puresky",
+      "title": "Table Mountain 1 (Pure Sky) HDRI, 2k",
+      "sourceUrl": "https://polyhaven.com/a/table_mountain_1_puresky",
+      "author": "Greg Zaal (original), Jarod Guest (sky edits), Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "originalSha256": "d9e84174c17828144091cd87eae72b8892a549dcc2831074df3b7c779e776073",
+      "processingSteps": [
+        "Downloaded the 2k Radiance HDR from the Poly Haven download host",
+        "Shipped unmodified; at runtime the sun is measured out of it, clamped in the IBL copy, and the sky is oriented to put the sun at 32 degrees"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/env/table_mountain_1_puresky_2k.hdr",
+          "bytes": 5179035,
+          "sha256": "d9e84174c17828144091cd87eae72b8892a549dcc2831074df3b7c779e776073"
+        }
+      ],
+      "usage": "Sky background, PMREM environment, key-light direction and colour, haze colour"
+    },
+    {
+      "id": "polyhaven-cliff_side",
+      "title": "Cliff Side (1k diff/nor_gl/arm)",
+      "sourceUrl": "https://polyhaven.com/a/cliff_side",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "originalSha256": {
+        "diff": "5c6858541108fc34e5726ecf4d8d942d6301155c489e7341619260f2909570c5",
+        "nor_gl": "28583860810a7d6d8ffddeaaff463408fc580338fd5a92c67b058207e75375a3",
+        "arm": "6ec77eadb99d00a0a0e68ae40b09e4cc4931941ada1114e5a4d9dd94e8a046dd"
+      },
+      "processingSteps": [
+        "Downloaded 1k JPG maps from the Poly Haven download host",
+        "Re-encoded to WebP with Pillow (colour q82 sRGB, normal q90 and ARM q85 linear)"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/textures/cliff_side/cliff_side_diff_1k.webp",
+          "bytes": 172692,
+          "sha256": "ef6eadd26adfce27ea573a2baccce2b1a216d409dab2d54af5b95f94ce3346d9"
+        },
+        {
+          "path": "public/textures/cliff_side/cliff_side_nor_gl_1k.webp",
+          "bytes": 325110,
+          "sha256": "6c5e82b3c9a34a71ed021b48e588d8501ca9fdb8cc0bd2038b8782c50e29408e"
+        },
+        {
+          "path": "public/textures/cliff_side/cliff_side_arm_1k.webp",
+          "bytes": 55784,
+          "sha256": "4bdd54e3affd448aee9ced1bb0d98940dff3e7ef4f3a3664b1787b3f9ae17890"
+        }
+      ],
+      "usage": "Island rock sides (triplanar, regraded toward damp grey)"
+    },
+    {
+      "id": "polyhaven-mossy_rock",
+      "title": "Mossy Rock (1k diff/nor_gl/arm)",
+      "sourceUrl": "https://polyhaven.com/a/mossy_rock",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "originalSha256": {
+        "diff": "4dbf37f1b0465c9c8914213163923be159716f5b97fb6946437b6c5e143ef540",
+        "nor_gl": "232cdd6a9fdfd01bb8bb1f8f604c53dbca79fa0d3d7995edf85c9945757aa8df",
+        "arm": "1c1b8da603c93e863ccb68a8f4fcc6ff02774b83d9a6e9422c7d4aa77397b6a3"
+      },
+      "processingSteps": [
+        "Downloaded 1k JPG maps from the Poly Haven download host",
+        "Re-encoded to WebP with Pillow (colour q82 sRGB, normal q90 and ARM q85 linear)"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/textures/mossy_rock/mossy_rock_diff_1k.webp",
+          "bytes": 323618,
+          "sha256": "24111a3c8394773ffa759b7e99912a5284abd437c9eb1fd569b26b1ab89f8e53"
+        },
+        {
+          "path": "public/textures/mossy_rock/mossy_rock_nor_gl_1k.webp",
+          "bytes": 332096,
+          "sha256": "18214c43e38bc77271da6ca8cdf3598fe1e5bcbb2a41deb8d281ebb3fae8e97c"
+        },
+        {
+          "path": "public/textures/mossy_rock/mossy_rock_arm_1k.webp",
+          "bytes": 203724,
+          "sha256": "3c7a3f43c9b4ae4e25f343a717bbf26e736850a1fb1bba6180c927b60e3e0b23"
+        }
+      ],
+      "usage": "Moss on island rims, shelter masonry"
+    },
+    {
+      "id": "polyhaven-grass_ground",
+      "title": "Grass Ground (1k diff/nor_gl/arm)",
+      "sourceUrl": "https://polyhaven.com/a/grass_ground",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "originalSha256": {
+        "diff": "a79cc5ed65af0f80261b39a383b64a8c5272c5144d724deb43dbc29f0e4cd19b",
+        "nor_gl": "7000e2ccd479bb7b66dcdf4faef7b47554324566886314ca620cbf03e274e826",
+        "arm": "b8c13e5972827dda6465fc98bbb8b3a0e67215bf8e864c729072fc9c1cc502ef"
+      },
+      "processingSteps": [
+        "Downloaded 1k JPG maps from the Poly Haven download host",
+        "Re-encoded to WebP with Pillow (colour q82 sRGB, normal q90 and ARM q85 linear)"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/textures/grass_ground/grass_ground_diff_1k.webp",
+          "bytes": 188870,
+          "sha256": "46ce8d31cf20faa9e26a25cefb18e58bbd2d84e40e5256324dab84b01586c692"
+        },
+        {
+          "path": "public/textures/grass_ground/grass_ground_nor_gl_1k.webp",
+          "bytes": 560988,
+          "sha256": "bf45a4c7294cf826b626eed6f1276785e8f45c7dadaaade314a02f90a2d6f3e3"
+        },
+        {
+          "path": "public/textures/grass_ground/grass_ground_arm_1k.webp",
+          "bytes": 185448,
+          "sha256": "e8e80896121c347d52fae7c0cb3dd95cd621cb5f873cc6fd335dc0ec92bb7f7d"
+        }
+      ],
+      "usage": "Island turf, shelter turf roof"
+    },
+    {
+      "id": "polyhaven-river_small_rocks",
+      "title": "River Small Rocks (1k diff/nor_gl/arm)",
+      "sourceUrl": "https://polyhaven.com/a/river_small_rocks",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "originalSha256": {
+        "diff": "adbcaae1f1445d5b49797c71ea2c3f43ccaf7b109f933a427f0d0993d1dbbc51",
+        "nor_gl": "983f99bd61cdcdeb3d2ebe0cbba851fd58f249d38f9e76a25084a558ee56e8e6",
+        "arm": "af3438a86857c15bf9efcc6abbbef0648d586312271540c34dc86b64901c8f66"
+      },
+      "processingSteps": [
+        "Downloaded 1k JPG maps from the Poly Haven download host",
+        "Re-encoded to WebP with Pillow (colour q82 sRGB, normal q90 and ARM q85 linear)"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/textures/river_small_rocks/river_small_rocks_diff_1k.webp",
+          "bytes": 282230,
+          "sha256": "28beb906152e78ebc7f9fec97f007049ead5c4fc8ada7bafb0ac0d7f56c821b4"
+        },
+        {
+          "path": "public/textures/river_small_rocks/river_small_rocks_nor_gl_1k.webp",
+          "bytes": 531728,
+          "sha256": "2ac279bb2d9c7b86ee47f0b77933656604cdc0f87d8b25056a9af1592b52f7ed"
+        },
+        {
+          "path": "public/textures/river_small_rocks/river_small_rocks_arm_1k.webp",
+          "bytes": 187106,
+          "sha256": "d1db569bb355b3e5ead7981746594c9c328ecda8e2c864a0d042edcd2b20f94a"
+        }
+      ],
+      "usage": "Beck and tarn beds seen through the water"
+    },
+    {
+      "id": "polyhaven-weathered_planks",
+      "title": "Weathered Planks (1k diff/nor_gl/arm)",
+      "sourceUrl": "https://polyhaven.com/a/weathered_planks",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "originalSha256": {
+        "diff": "01c9a372cfd7a7bf471b59c2458ed3ccecc93448aebf7ba0cc5b3b5b6ed24349",
+        "nor_gl": "381d298f3194ec4961b04b4912b9b6efea4b2ff7b914dac57e24c8b6b0be6a25",
+        "arm": "f0d81d945dbb267ed8b411af4db55141ae52b87313403667dd06aead9532fbef"
+      },
+      "processingSteps": [
+        "Downloaded 1k JPG maps from the Poly Haven download host",
+        "Re-encoded to WebP with Pillow (colour q82 sRGB, normal q90 and ARM q85 linear)"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/textures/weathered_planks/weathered_planks_diff_1k.webp",
+          "bytes": 65794,
+          "sha256": "24697dce6163ab3ae042f609aa1b6d8b284959ab1fb8880f481c44c2645b23e5"
+        },
+        {
+          "path": "public/textures/weathered_planks/weathered_planks_nor_gl_1k.webp",
+          "bytes": 132576,
+          "sha256": "09217d93a25148463e7dd6b988926ec6e67a41e13dc40765931bfc5e261820a5"
+        },
+        {
+          "path": "public/textures/weathered_planks/weathered_planks_arm_1k.webp",
+          "bytes": 36326,
+          "sha256": "2bd7ab66123e0dc4dbe9b28bb46ecfa039e9053c140aca9fda76239cc9a73714"
+        }
+      ],
+      "usage": "Gate, posts, jetty, signs, door"
+    },
+    {
+      "id": "polyhaven-bark_brown_02",
+      "title": "Bark Brown 02 (1k diff/nor_gl/arm)",
+      "sourceUrl": "https://polyhaven.com/a/bark_brown_02",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "originalSha256": {
+        "diff": "920fa0bed0c9d78c1d530e99795113afd532d7db746de440f4a85d7c83ed0f1a",
+        "nor_gl": "0d5e691e8ad8bcd093a3587887fda2a6b4a948b5708a4f256f7919584c6eb857",
+        "arm": "6bd86d37b3b9b40cc30a4b661e382ec41fa7463a8b1144ff44708b19fa675af1"
+      },
+      "processingSteps": [
+        "Downloaded 1k JPG maps from the Poly Haven download host",
+        "Re-encoded to WebP with Pillow (colour q82 sRGB, normal q90 and ARM q85 linear)"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/textures/bark_brown_02/bark_brown_02_diff_1k.webp",
+          "bytes": 264590,
+          "sha256": "feffd9f3901ed8eacfd504f862cade6252a05f726fa6cc42bf43608d8322adab"
+        },
+        {
+          "path": "public/textures/bark_brown_02/bark_brown_02_nor_gl_1k.webp",
+          "bytes": 418956,
+          "sha256": "4c44e7c2c3e3f70404070e1c38c26aabcb40fe594eeee8c1ed821fb695c0c761"
+        },
+        {
+          "path": "public/textures/bark_brown_02/bark_brown_02_arm_1k.webp",
+          "bytes": 160160,
+          "sha256": "8221e5f87a0455d84c1fdeb9b260606ca4f3d7d37d329df0239f6c139aa8de1e"
+        }
+      ],
+      "usage": "Log seats, lift basket"
+    },
+    {
+      "id": "polyhaven-rock_moss_set_01",
+      "title": "Rock Moss Set 01 (glTF 1k)",
+      "sourceUrl": "https://polyhaven.com/a/rock_moss_set_01",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "originalSha256": "c36675aca9c6b2be7785c2534cf413b03ec82a5a2a5407a2b1c0cdb0346c9727",
+      "processingSteps": [
+        "Downloaded glTF, binary and 1k textures from the Poly Haven download host",
+        "npx @gltf-transform/cli@4.2.1 optimize --compress meshopt --texture-compress webp --texture-size 1024 --simplify-ratio 0.5 --simplify-error 0.002",
+        "--join false --flatten false --instance false (keep each rock separate)"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/models/rock_moss_set_01.glb",
+          "bytes": 528480,
+          "sha256": "c096811f53d6c647404bbc202e46f6db09547a690a7eef75e6c290d027993756"
+        }
+      ],
+      "usage": "Stepping-stone, cairn, wall and bank rocks"
+    },
+    {
+      "id": "polyhaven-rock_moss_set_02",
+      "title": "Rock Moss Set 02 (glTF 1k)",
+      "sourceUrl": "https://polyhaven.com/a/rock_moss_set_02",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "originalSha256": "c3b992a7622e94f7d8da97a47277a2a5177a513af0312a127ec908d4056c97db",
+      "processingSteps": [
+        "Downloaded glTF, binary and 1k textures from the Poly Haven download host",
+        "npx @gltf-transform/cli@4.2.1 optimize --compress meshopt --texture-compress webp --texture-size 1024 --simplify-ratio 0.5 --simplify-error 0.002",
+        "--join false --flatten false --instance false (keep each rock separate)"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/models/rock_moss_set_02.glb",
+          "bytes": 635488,
+          "sha256": "aadb9b2759423569661cee7e62d037ef7fc39300a23f8332ae636b66eb616cfd"
+        }
+      ],
+      "usage": "Stepping-stone, cairn, wall and bank rocks"
+    },
+    {
+      "id": "polyhaven-boulder_01",
+      "title": "Boulder 01 (glTF 1k)",
+      "sourceUrl": "https://polyhaven.com/a/boulder_01",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-28",
+      "originalSha256": "51487934db898b4c24072780a451e34eca5c02e3ada24a62bbc600bbc4019e92",
+      "processingSteps": [
+        "Downloaded glTF, binary and 1k textures from the Poly Haven download host",
+        "npx @gltf-transform/cli@4.2.1 optimize --compress meshopt --texture-compress webp --texture-size 1024 --simplify-ratio 0.2 --simplify-error 0.002"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/models/boulder_01.glb",
+          "bytes": 1280356,
+          "sha256": "a499d28a13703e1753ed3beb845031b5864f3429b4c9ee8f89beb8e8628fd2f3"
+        }
+      ],
+      "usage": "Hollow ledge and terrace cliff"
+    },
+    {
+      "id": "polyhaven-grass_medium_02",
+      "title": "Grass Medium 02 (glTF 1k)",
+      "sourceUrl": "https://polyhaven.com/a/grass_medium_02",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-26 (ODD TIDE); copied 2026-09-28",
+      "originalSha256": {
+        "glb": "bcf323d2dcfef9bf50c22029f20b76e70db63f82d3735808d0b43f6a20646ec4",
+        "alpha": "15976877b3dbd22cd496a9549f1eb7d86710846a3631fb87eedbf046519e339f",
+        "diff_bled": "9bcf31944648a7484179977e499dc6decd2805148bed1dea806fb89a5b7500a6"
+      },
+      "processingSteps": [
+        "Copied from ODD TIDE (WilliamHenryKing/01-odd-tide @ 924febb), whose record reads: downloaded glTF and 1k textures from Poly Haven; gltf-transform dedup, prune, simplify --ratio 0.35 --error 0.001, meshopt --level medium",
+        "Cut-out alpha PNG re-encoded to greyscale WebP (q90)",
+        "ODD TIDE's alpha-bled colour map re-encoded to WebP (q85)"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/models/grass_medium_02.glb",
+          "bytes": 628104,
+          "sha256": "bcf323d2dcfef9bf50c22029f20b76e70db63f82d3735808d0b43f6a20646ec4"
+        },
+        {
+          "path": "public/models/grass_medium_02_alpha_1k.webp",
+          "bytes": 27022,
+          "sha256": "230b72ebc84ff8f0daee4b1a14d4521ad04a3e957b10e807d00870fde9d2566b"
+        },
+        {
+          "path": "public/models/grass_medium_02_diff_bled_1k.webp",
+          "bytes": 30110,
+          "sha256": "013bfa14216082c84a38271ce6ae75489760b39964c0f07b9076036511bf327b"
+        }
+      ],
+      "usage": "Instanced turf grass clumps"
+    },
+    {
+      "id": "polyhaven-fern_02",
+      "title": "Fern 02 (glTF 1k)",
+      "sourceUrl": "https://polyhaven.com/a/fern_02",
+      "author": "Poly Haven",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-26 (ODD TIDE); copied 2026-09-28",
+      "originalSha256": {
+        "glb": "77d9b7779ff69511294192b7b4a0048f7cc25be7b5c38e61b5fd3ce0c244495d",
+        "alpha": "ea3c64284c7ebdeedf484d2d816eae92825ec526140c3bb83859ddc7a64001f9"
+      },
+      "processingSteps": [
+        "Copied from ODD TIDE (WilliamHenryKing/01-odd-tide @ 924febb), whose record reads: downloaded glTF and 1k textures from Poly Haven; gltf-transform dedup, prune, meshopt --level medium",
+        "Cut-out alpha PNG re-encoded to greyscale WebP (q90)"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/models/fern_02.glb",
+          "bytes": 1042276,
+          "sha256": "77d9b7779ff69511294192b7b4a0048f7cc25be7b5c38e61b5fd3ce0c244495d"
+        },
+        {
+          "path": "public/models/fern_02_alpha_1k.webp",
+          "bytes": 61038,
+          "sha256": "172acd2ca279d0c9a2d52cfb2fd69e6199e8d23c291d81e90328ae434a6c5764"
+        }
+      ],
+      "usage": "Ferns against rocks and cliffs"
+    },
+    {
+      "id": "oga-contemplation",
+      "title": "Contemplation",
+      "sourceUrl": "https://opengameart.org/content/contemplation-0",
+      "author": "Joth",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-27",
+      "originalSha256": "283962d3a975c93613c46cda30c9f0816176ae3e2899f961591a49e2d41b4bf3",
+      "processingSteps": [
+        "Transcoded with Python soundfile/libsndfile: Mono, 32 kHz, OGG Vorbis"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/audio/music.ogg",
+          "bytes": 705269,
+          "sha256": "3d544c5057344b145c74f6ca8c7131b76227c87afc07a0ac72f3987e07a9d9de"
+        }
+      ],
+      "usage": "Music, ambience and sound effects"
+    },
+    {
+      "id": "oga-amb-rain-loop-1",
+      "title": "Amb rain loop 1",
+      "sourceUrl": "https://opengameart.org/content/amb-rain-loop-1",
+      "author": "Kresiek The Furry",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-27",
+      "originalSha256": "ae578791d46218d180a0e3aebefb5d621dbdd3f1627899c25210379f57d480b0",
+      "processingSteps": [
+        "Transcoded with Python soundfile/libsndfile: Mono, 22.05 kHz, 26 s excerpt crossfaded into a loop, OGG Vorbis"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/audio/amb-rain.ogg",
+          "bytes": 125391,
+          "sha256": "fa5385c33269324264c82d59376ff63ffa402d3d2129917ca4525e5cfc26ed69"
+        }
+      ],
+      "usage": "Music, ambience and sound effects"
+    },
+    {
+      "id": "oga-park-ambiences",
+      "title": "Park ambiences (birds, river, wind)",
+      "sourceUrl": "https://opengameart.org/content/park-ambiences",
+      "author": "Thimras",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-27",
+      "originalSha256": "dc1a5ac34b89cab7f8f261b53a23da7c1c5e3cc895aae4cb6fb4a1a04001b2af",
+      "processingSteps": [
+        "Transcoded with Python soundfile/libsndfile: Mono, 22.05 kHz, excerpts crossfaded into loops, OGG Vorbis"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/audio/amb-birds.ogg",
+          "bytes": 147790,
+          "sha256": "ce87f2c4a46a6606f3f93cd7fa7da1c5f704b5db9d92b5de3d6d357e2dbb916c"
+        },
+        {
+          "path": "public/audio/amb-river.ogg",
+          "bytes": 102956,
+          "sha256": "9faa362a9a6118e403794ec3751bb051f8e8ec1000c85b595c58c290536cefdc"
+        },
+        {
+          "path": "public/audio/amb-wind.ogg",
+          "bytes": 122499,
+          "sha256": "e29760d8f7d19d101f7170b58a01571fcce20415261f8c85f7fa1c36b66c6b3e"
+        }
+      ],
+      "usage": "Music, ambience and sound effects"
+    },
+    {
+      "id": "kenney-impact-sounds",
+      "title": "Impact Sounds",
+      "sourceUrl": "https://kenney.nl/assets/impact-sounds",
+      "author": "Kenney (kenney.nl)",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-27",
+      "originalSha256": "029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8",
+      "processingSteps": [
+        "Transcoded with Python soundfile/libsndfile: Mono, 22.05 kHz, normalised, OGG Vorbis"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/audio/step-1.ogg",
+          "bytes": 5639,
+          "sha256": "9b8698bacbe87c5069356ac1cdaa04fce3fb01c4c23c069268a5d4dd59961f6d"
+        },
+        {
+          "path": "public/audio/step-2.ogg",
+          "bytes": 5441,
+          "sha256": "811810e53de11d3a451b1ff1813884e2e856b785016c10e56a98e9bec33d2acf"
+        },
+        {
+          "path": "public/audio/step-3.ogg",
+          "bytes": 5441,
+          "sha256": "05f0ae5ac87fde26c1596a575990d3171f24c03e0a52ded163d4be48b6cc6247"
+        },
+        {
+          "path": "public/audio/take.ogg",
+          "bytes": 4455,
+          "sha256": "8af6591418f4950a6ce3a5a558322db66539ab347e0d82e2e5b54d21df771c64"
+        },
+        {
+          "path": "public/audio/release.ogg",
+          "bytes": 5085,
+          "sha256": "bb00475a4593ee6ddb193f0392c39afd10453ccc87223228cd2a2a4c91f22c79"
+        },
+        {
+          "path": "public/audio/restore.ogg",
+          "bytes": 7999,
+          "sha256": "5111332299fd744a651286e364d4042c2ab82fd077d197de0159d3f50dcbe332"
+        }
+      ],
+      "usage": "Music, ambience and sound effects"
+    },
+    {
+      "id": "kenney-rpg-audio",
+      "title": "RPG Audio",
+      "sourceUrl": "https://kenney.nl/assets/rpg-audio",
+      "author": "Kenney (kenney.nl)",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-27",
+      "originalSha256": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b",
+      "processingSteps": [
+        "Transcoded with Python soundfile/libsndfile: Mono, 22.05 kHz, normalised, OGG Vorbis"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/audio/book-open.ogg",
+          "bytes": 5369,
+          "sha256": "09f720e98dc7f4ec30675d3ba24865da12a46e5f7a8d525ea63ccf187cb2c2dd"
+        },
+        {
+          "path": "public/audio/book-close.ogg",
+          "bytes": 5567,
+          "sha256": "de406f0d06747f9fe952d1e0396617d81494c97482768afa289e2b4f8dcdabcb"
+        },
+        {
+          "path": "public/audio/page.ogg",
+          "bytes": 7227,
+          "sha256": "b5b889d03a6a4613981889978d78111c9f45a655771105f6678d15bac1e92bff"
+        }
+      ],
+      "usage": "Music, ambience and sound effects"
+    },
+    {
+      "id": "kenney-interface-sounds",
+      "title": "Interface Sounds",
+      "sourceUrl": "https://kenney.nl/assets/interface-sounds",
+      "author": "Kenney (kenney.nl)",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-27",
+      "originalSha256": "f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232",
+      "processingSteps": [
+        "Transcoded with Python soundfile/libsndfile: Mono, 22.05 kHz, normalised, OGG Vorbis"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/audio/click.ogg",
+          "bytes": 3983,
+          "sha256": "47f9bb5af8009b2822805b250fa68a3ec3f09ba3b84556dd9e4fce0f033baba4"
+        },
+        {
+          "path": "public/audio/hint.ogg",
+          "bytes": 4651,
+          "sha256": "44560acf24ddbae97318004d949f14669db413d8b88dbe05fa0184d08677ef52"
+        },
+        {
+          "path": "public/audio/toggle.ogg",
+          "bytes": 4663,
+          "sha256": "84428799c60d4dfb4da5f13772a1d0f6b1a266c61d4e6949c9d5572298226ad9"
+        }
+      ],
+      "usage": "Music, ambience and sound effects"
+    },
+    {
+      "id": "kenney-music-jingles",
+      "title": "Music Jingles",
+      "sourceUrl": "https://kenney.nl/assets/music-jingles",
+      "author": "Kenney (kenney.nl)",
+      "license": "CC0 1.0",
+      "retrievalDate": "2026-09-27",
+      "originalSha256": "b729ba57959bd58793d2c5cafa348aaf2655d354f3da35ec4729e03ec77197b8",
+      "processingSteps": [
+        "Transcoded with Python soundfile/libsndfile: Mono, 22.05 kHz, normalised, OGG Vorbis"
+      ],
+      "outputFiles": [
+        {
+          "path": "public/audio/blocked.ogg",
+          "bytes": 6921,
+          "sha256": "5e3f683d4f42aa0b0a6f279e1a70db9c2836883cb5d3a215583d9d6cc846b7a3"
+        },
+        {
+          "path": "public/audio/discover.ogg",
+          "bytes": 8858,
+          "sha256": "6a38f7227015c8cdc023617a698ebf2460c3cd8a2ffdf4d1e29713911e97cf7e"
+        },
+        {
+          "path": "public/audio/finish.ogg",
+          "bytes": 10388,
+          "sha256": "aa28ad7df6489795252acf4e02c96403f63428a717086cb06ba6b98ed4707cfe"
+        }
+      ],
+      "usage": "Music, ambience and sound effects"
+    }
+  ]
+}
