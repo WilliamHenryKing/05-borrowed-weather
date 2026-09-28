@@ -9,6 +9,7 @@ import { Backdrop } from "./backdrop";
 import type { DioramaParts } from "./diorama";
 import { tarn, terrace } from "./highlands";
 import { mesh, PALETTE, rng } from "./kit";
+import { BOOKMARKS, type BookmarkName, followPose, LAYOUT, type Pose, RADIUS } from "./layout";
 import { ford, gate, hollow } from "./lowlands";
 import { hiker, nameBoard, stone } from "./props";
 import { shelter } from "./shelter";
@@ -16,15 +17,6 @@ import { Stage } from "./stage";
 import { Transfer } from "./transfer";
 import { WeatherCell } from "./weather";
 
-const LAYOUT: Record<LocationId, [number, number, number]> = {
-  gate: [0, 0, 0],
-  ford: [5.4, 1.1, -3.4],
-  hollow: [0.6, 2.4, -7.6],
-  terrace: [5.8, 3.9, -11.4],
-  tarn: [0.6, 5.7, -15.4],
-  shelter: [5.6, 7.9, -19.4],
-};
-const RADIUS = 2.3;
 const BUILD = { gate, ford, hollow, terrace, tarn, shelter } as const;
 
 interface Stop {
@@ -42,12 +34,12 @@ export class TrailScene {
   private readonly transfer = new Transfer();
   private readonly backdrop: Backdrop;
   private readonly focus = new THREE.Vector3();
-  private readonly camPos = new THREE.Vector3();
   private readonly pointer = new THREE.Vector2();
   private readonly raycaster = new THREE.Raycaster();
   private state: GameState | null = null;
   private calm: boolean;
   private down: { x: number; y: number } | null = null;
+  private bookmark: BookmarkName | null = null;
   onPick: (id: LocationId) => void = () => {};
 
   constructor(host: HTMLElement, calm: boolean, onReady: () => void) {
@@ -199,16 +191,13 @@ export class TrailScene {
       stop.parts.update(dt, time, this.calm, stop.cell.level, s);
     }
     const cam = this.stage.camera;
-    const tall = cam.aspect < 0.75;
-    const sway = this.calm ? 0 : Math.sin(time * 0.15) * 0.25;
-    this.camPos
-      .copy(this.focus)
-      .add(
-        new THREE.Vector3(1.2 + sway + this.pointer.x * 0.4, tall ? 5.4 : 3.4, tall ? 10.5 : 7.4),
-      );
-    cam.position.copy(this.camPos);
-    cam.lookAt(this.focus.x, this.focus.y - (tall ? 0.4 : 0), this.focus.z);
-    this.stage.aimLight(this.focus);
+    const sway = this.calm ? 0 : Math.sin(time * 0.15) * 0.25 + this.pointer.x * 0.4;
+    const pose: Pose = this.bookmark
+      ? BOOKMARKS[this.bookmark](cam.aspect)
+      : followPose(this.focus, cam.aspect, sway);
+    cam.position.copy(pose.position);
+    cam.lookAt(pose.target);
+    this.stage.aimLight(this.bookmark ? pose.target : this.focus);
     const w = this.walker.group;
     w.rotation.y = this.calm ? 0.3 : 0.3 + Math.sin(time * 0.7) * 0.08;
     this.walker.jar.update(time, this.calm);
@@ -257,6 +246,15 @@ export class TrailScene {
         id && id !== this.state?.at ? "pointer" : "default";
     }
   };
+
+  /** Visual-test hooks: pin the camera to a named bookmark (null returns to play). */
+  setBookmark(name: BookmarkName | null): void {
+    this.bookmark = name;
+  }
+
+  get stageForTests(): Stage {
+    return this.stage;
+  }
 
   dispose(): void {
     const el = this.stage.renderer.domElement;

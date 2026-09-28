@@ -10,6 +10,7 @@ import { type Action, apply, createGame, type GameState } from "../game/state";
 import { LOCATIONS, type LocationId, WEATHERS } from "../game/world";
 import { worldReady } from "../loader";
 import { TrailScene } from "../scene/trail";
+import { installVisualTest, visualTestEnabled } from "../scene/visual-test";
 import { Hud } from "./Hud";
 import { Intro } from "./Intro";
 import { Modal } from "./Modal";
@@ -61,11 +62,13 @@ export function App() {
     trail.onPick = (to: LocationId) => act({ type: "travel", to });
     trail.start();
     scene.current = trail;
+    const removeHook = visualTestEnabled() ? installVisualTest(trail) : () => {};
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const onMotion = () => trail.setCalm(mq.matches);
     mq.addEventListener("change", onMotion);
     return () => {
       mq.removeEventListener("change", onMotion);
+      removeHook();
       trail.dispose();
       scene.current = null;
     };

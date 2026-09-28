@@ -46,6 +46,8 @@ export class Stage {
   private readonly clock = new THREE.Clock();
   private frame = 0;
   private running = false;
+  private frozenAt: number | null = null;
+  private waiters: { frame: number; done: () => void }[] = [];
   onFrame: (dt: number, time: number) => void = () => {};
   onFirstFrame: () => void = () => {};
 
@@ -123,13 +125,38 @@ export class Stage {
     this.running = true;
     const tick = () => {
       if (!this.running) return;
-      const dt = Math.min(this.clock.getDelta(), 0.1);
-      this.onFrame(dt, this.clock.elapsedTime);
+      const raw = Math.min(this.clock.getDelta(), 0.1);
+      const dt = this.frozenAt === null ? raw : 0;
+      this.onFrame(dt, this.frozenAt ?? this.clock.elapsedTime);
       this.renderer.render(this.scene, this.camera);
       if (this.frame++ === 0) this.onFirstFrame();
+      const due = this.waiters.filter((w) => this.frame >= w.frame);
+      this.waiters = this.waiters.filter((w) => this.frame < w.frame);
+      for (const w of due) w.done();
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
+  }
+
+  /** Stop scene time (visual tests); rendering continues so captures stay live. */
+  freeze(on: boolean): void {
+    this.frozenAt = on ? this.clock.elapsedTime : null;
+  }
+
+  /** Resolve once `frames` more frames have been rendered. */
+  settle(frames: number): Promise<void> {
+    return new Promise((done) => this.waiters.push({ frame: this.frame + frames, done }));
+  }
+
+  get rendered(): number {
+    return this.frame;
+  }
+
+  /** The GPU renderer string, for logging which backend produced a capture. */
+  rendererName(): string {
+    const gl = this.renderer.getContext();
+    const ext = gl.getExtension("WEBGL_debug_renderer_info");
+    return String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER));
   }
 
   dispose(): void {

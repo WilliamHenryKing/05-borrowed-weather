@@ -37,7 +37,10 @@ export function Hud({
   const travel = (to: LocationId | undefined) => to && onAction({ type: "travel", to });
 
   return (
-    <div className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 sm:p-5">
+    <div
+      data-hud
+      className="pointer-events-none absolute inset-0 flex flex-col justify-between p-3 sm:p-5"
+    >
       <header className="flex items-start justify-between gap-3">
         <section
           className="panel pointer-events-auto max-w-md rounded-2xl p-3 sm:p-4"
