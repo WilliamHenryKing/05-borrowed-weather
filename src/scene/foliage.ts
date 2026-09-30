@@ -15,6 +15,12 @@ export function setWind(time: number, strength: number): void {
   wind.strength.value = strength;
 }
 
+let reveal: ((objects: THREE.Object3D[]) => unknown) | null = null;
+/** How streamed foliage joins the scene (the stage compiles its shaders before showing it). */
+export function setFoliageReveal(fn: (objects: THREE.Object3D[]) => unknown): void {
+  reveal = fn;
+}
+
 let density = 1;
 /** Scale every field's instance count (the low quality tier plants fewer). */
 export function setFoliageDensity(d: number): void {
@@ -92,7 +98,10 @@ function whenScans(
 ): THREE.Group {
   whenFoliage(() => {
     const { grass, fern } = assets();
-    if (grass && fern) build(grass, fern);
+    if (!grass || !fern) return;
+    const before = group.children.length;
+    build(grass, fern);
+    reveal?.(group.children.slice(before));
   });
   return group;
 }

@@ -16,6 +16,9 @@ const EXPOSURE = 2.6;
 const SUN_AZIMUTH = Math.atan2(0.35, 0.9);
 /** Metres the key light's shadow box spans around the focused diorama. */
 const SHADOW_HALF = 3.4;
+/** Drawing-buffer pixels each tier may use (full density up to about 2560 × 1440 on high). */
+const PIXEL_BUDGET: Record<Quality, number> = { high: 3.7e6, medium: 2.1e6, low: 1.2e6 };
+const MAX_RATIO: Record<Quality, number> = { high: 2, medium: 1.5, low: 1.5 };
 
 let fogPatched = false;
 /**
@@ -71,10 +74,13 @@ export class Stage {
   private running = false;
   private frozenAt: number | null = null;
   private paused = false;
-  /** Adaptive step: seconds the smoothed frame time has stayed over budget, and whether spent. */
+  /** Adaptive steps: seconds the smoothed frame time has stayed over budget, and whether spent. */
   private slowFor = 0;
   private frameAvg = 1 / 60;
   private degraded = false;
+  private waterCheap = false;
+  /** Resolution scale the governor may lower (to 0.6), on top of the pixel budget. */
+  private renderScale = 1;
   adaptive = true;
   onDegrade: () => void = () => {};
   private waiters: { frame: number; done: () => void }[] = [];
@@ -96,7 +102,7 @@ export class Stage {
     this.renderer.toneMapping = THREE.AgXToneMapping;
     this.renderer.toneMappingExposure = EXPOSURE;
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.domElement.className = "block h-full w-full touch-none";
     this.renderer.domElement.setAttribute("aria-hidden", "true");
     host.appendChild(this.renderer.domElement);
@@ -152,8 +158,10 @@ export class Stage {
   readonly resize = (): void => {
     const w = this.host.clientWidth || window.innerWidth;
     const h = this.host.clientHeight || window.innerHeight;
-    const cap = this.quality === "high" ? 2 : 1.5;
-    const ratio = Math.min(window.devicePixelRatio || 1, cap);
+    // Within the tier's pixel budget (a high-density screen need not draw every device pixel).
+    const budget = Math.sqrt(PIXEL_BUDGET[this.quality] / Math.max(1, w * h));
+    const ratio =
+      Math.min(window.devicePixelRatio || 1, MAX_RATIO[this.quality], budget) * this.renderScale;
     this.renderer.setPixelRatio(ratio);
     this.renderer.setSize(w, h, false);
     this.pipeline.setSize(w, h, ratio);
@@ -161,6 +169,47 @@ export class Stage {
     this.camera.fov = w / h < 0.75 ? 52 : 40;
     this.camera.updateProjectionMatrix();
   };
+
+  /**
+   * Compile every shader before the first frame: in parallel where the browser allows
+   * (KHR_parallel_shader_compile), for the HDR target the scene pass draws into (whose programs
+   * differ from on-screen ones); then draw everything once with culling off, so the driver
+   * finishes each program for the layouts and passes it will meet (ANGLE builds its D3D shaders
+   * at the first draw). All behind the arrival veil.
+   */
+  async precompile(): Promise<void> {
+    const r = this.renderer;
+    const composer = this.pipeline.composer;
+    const previous = r.getRenderTarget();
+    r.setRenderTarget(composer.readBuffer);
+    const compiling = r.compileAsync(this.scene, this.camera);
+    r.setRenderTarget(previous);
+    await compiling;
+    const culled: THREE.Object3D[] = [];
+    this.scene.traverse((o) => {
+      if (o.frustumCulled) {
+        o.frustumCulled = false;
+        culled.push(o);
+      }
+    });
+    this.pipeline.render();
+    for (const o of culled) o.frustumCulled = true;
+  }
+
+  /**
+   * Things that join the scene in play (streamed foliage) stay hidden until their shaders are
+   * compiled in parallel, so their arrival never stalls a frame.
+   */
+  async reveal(objects: THREE.Object3D[]): Promise<void> {
+    for (const o of objects) o.visible = false;
+    const r = this.renderer;
+    const previous = r.getRenderTarget();
+    r.setRenderTarget(this.pipeline.composer.readBuffer);
+    const compiling = Promise.all(objects.map((o) => r.compileAsync(o, this.camera, this.scene)));
+    r.setRenderTarget(previous);
+    await compiling;
+    for (const o of objects) o.visible = true;
+  }
 
   start(): void {
     this.running = true;
@@ -190,17 +239,44 @@ export class Stage {
   }
 
   /**
-   * If frames stay over 16.7 ms for about two seconds on the high tier, drop GTAO and the water's
-   * transmission pass once (never flip back, so it cannot oscillate).
+   * Whenever frames stay over 16.7 ms for about two seconds, take one step lighter: GTAO and the
+   * water's transmission pass, then multisampling, then resolution in tenths down to 60 %
+   * (never back up, so it cannot oscillate).
    */
   private watchFrameTime(raw: number): void {
-    if (!this.adaptive || this.degraded || this.quality !== "high" || this.frame < 30) return;
+    if (!this.adaptive || this.degraded || this.frame < 30) return;
     this.frameAvg += (raw - this.frameAvg) * 0.1;
     this.slowFor = this.frameAvg > 1 / 59 ? this.slowFor + raw : 0;
     if (this.slowFor < 2) return;
-    this.degraded = true;
-    this.pipeline.degrade();
-    this.onDegrade();
+    this.slowFor = 0;
+    this.frameAvg = 1 / 60;
+    if (!this.degrade()) this.degraded = true;
+  }
+
+  /** One governor step down (false when nothing is left). */
+  degrade(): boolean {
+    if (!this.waterCheap) {
+      this.waterCheap = true;
+      this.pipeline.degrade();
+      this.onDegrade();
+      return true;
+    }
+    if (this.pipeline.degrade()) return true;
+    if (this.renderScale > 0.65) {
+      this.renderScale = Math.max(0.6, this.renderScale - 0.1);
+      this.resize();
+      return true;
+    }
+    return false;
+  }
+
+  /** Where the governor has got to, for evidence and tests. */
+  get qualityState() {
+    return {
+      ...this.pipeline.state,
+      pixelRatio: +this.renderer.getPixelRatio().toFixed(3),
+      renderScale: +this.renderScale.toFixed(2),
+    };
   }
 
   /** Stop drawing (visual tests): the last frame stays on the canvas for a screenshot. */

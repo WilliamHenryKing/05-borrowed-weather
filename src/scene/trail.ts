@@ -9,7 +9,7 @@ import type { Assets } from "./assets";
 import { Backdrop } from "./backdrop";
 import { CloudFloor } from "./cloud-floor";
 import type { DioramaParts } from "./diorama";
-import { setFoliageDensity, setWind } from "./foliage";
+import { setFoliageDensity, setFoliageReveal, setWind } from "./foliage";
 import { tarn, terrace } from "./highlands";
 import { mesh, PALETTE, rng } from "./kit";
 import { BOOKMARKS, type BookmarkName, followPose, LAYOUT, type Pose, RADIUS } from "./layout";
@@ -60,11 +60,12 @@ export class TrailScene {
     this.calm = calm;
     // Keep tweens on wall-clock time: slow devices jump rather than crawl in slow motion.
     gsap.ticker.lagSmoothing(0);
-    setFoliageDensity(quality === "high" ? 1 : 0.35);
+    setFoliageDensity(quality === "low" ? 0.35 : 1);
     this.stage = new Stage(host, quality, loaded);
     this.stage.adaptive = adaptive;
     this.stage.onDegrade = cheapWater;
     this.stage.onFirstFrame = onReady;
+    setFoliageReveal((objects) => this.stage.reveal(objects));
     LOCATIONS.forEach((id, i) => {
       const parts = BUILD[id](RADIUS, 11 + i * 17);
       const root = new THREE.Group();
@@ -119,7 +120,9 @@ export class TrailScene {
     this.stage.renderer.domElement.addEventListener("pointermove", this.onMove);
   }
 
-  start(): void {
+  /** Compile every shader behind the arrival veil, then start the frame loop. */
+  async start(): Promise<void> {
+    await this.stage.precompile();
     this.stage.start();
   }
 

@@ -18,6 +18,10 @@ export interface VisualTestHook {
   /** Mean milliseconds per rendered frame over the last `frames` frames. */
   frameTime(frames?: number): Promise<number>;
   settle(frames?: number): Promise<void>;
+  /** The quality tier and how far the frame-time governor has stepped it down. */
+  quality(): Record<string, unknown>;
+  /** Take one governor step down, as a slow frame run would (false when nothing is left). */
+  degrade(): boolean;
 }
 
 declare global {
@@ -52,6 +56,8 @@ export function installVisualTest(trail: TrailScene): () => void {
       return (performance.now() - t0) / frames;
     },
     settle: (frames = 3) => stage.settle(frames),
+    quality: () => stage.qualityState,
+    degrade: () => stage.degrade(),
   };
   window.__VISUAL_TEST__ = hook;
   void stage.settle(1).then(() => {

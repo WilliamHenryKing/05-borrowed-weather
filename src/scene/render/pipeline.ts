@@ -11,7 +11,30 @@ import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { SMAAPass } from "three/addons/postprocessing/SMAAPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
-export type Quality = "high" | "low";
+export type Quality = "high" | "medium" | "low";
+
+/**
+ * Zeroes NaN and infinity (all exponent bits set: immune to fast-math) and caps HDR values
+ * before bloom. Some GPUs (Apple's) make NaN where others quietly don't, and bloom's blur
+ * would spread one bad pixel over the whole frame.
+ */
+const FiniteShader = {
+  name: "FiniteShader",
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    varying vec2 vUv;
+    float finite(float x) {
+      return (floatBitsToUint(x) & 0x7f800000u) == 0x7f800000u ? 0.0 : clamp(x, 0.0, 16384.0);
+    }
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      gl_FragColor = vec4(finite(c.r), finite(c.g), finite(c.b), 1.0);
+    }`,
+};
 
 /** A restrained linear-light grade before tone mapping: a little saturation, a soft vignette. */
 const GradeShader = {
@@ -36,13 +59,33 @@ const GradeShader = {
 
 type VisibilityPatched = { _overrideVisibility(): void; _visibilityCache: THREE.Object3D[] };
 
-/** Pick a tier: `?quality=low|high` wins, otherwise phones and small CPUs get the low tier. */
+/**
+ * Pick a tier: `?quality=low|medium|high` wins; phones and small CPUs get the low tier;
+ * otherwise the GPU's name decides: discrete and recent Apple GPUs high, integrated medium
+ * (no ambient occlusion or multisampling). The stage's governor corrects the guess in play.
+ */
 export function detectQuality(): Quality {
   const asked = new URLSearchParams(window.location.search).get("quality");
-  if (asked === "low" || asked === "high") return asked;
+  if (asked === "low" || asked === "medium" || asked === "high") return asked;
   const coarse = window.matchMedia("(pointer: coarse)").matches;
   const cores = navigator.hardwareConcurrency || 4;
-  return coarse || cores <= 2 ? "low" : "high";
+  if (coarse || cores <= 2) return "low";
+  let gpu = "";
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    if (gl) {
+      const ext = gl.getExtension("WEBGL_debug_renderer_info");
+      gpu = String(
+        ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER),
+      );
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+    }
+  } catch {
+    return "low";
+  }
+  if (/swiftshader|llvmpipe|software|basic render/i.test(gpu)) return "low";
+  if (/nvidia|geforce|rtx|gtx|radeon (rx|pro)|amd radeon rx|apple m[2-9]/i.test(gpu)) return "high";
+  return "medium";
 }
 
 export class Pipeline {
@@ -62,6 +105,7 @@ export class Pipeline {
       type: THREE.HalfFloatType,
       samples: quality === "high" ? 4 : 0,
     });
+    const glare = quality !== "low";
     this.composer = new EffectComposer(renderer, target);
     this.composer.addPass(new RenderPass(scene, camera));
     if (quality === "high") {
@@ -106,7 +150,9 @@ export class Pipeline {
       };
       this.composer.addPass(ao);
       this.ao = ao;
-
+    }
+    this.composer.addPass(new ShaderPass(FiniteShader));
+    if (glare) {
       // Bloom as lens glare: only light above the threshold contributes, clamped so a bright
       // lamp cannot flood the frame.
       const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.16, 0.2, 2.2);
@@ -122,15 +168,39 @@ export class Pipeline {
     }
     this.composer.addPass(new ShaderPass(GradeShader));
     this.composer.addPass(new OutputPass());
-    if (quality === "high") {
+    if (glare) {
       this.smaa = new SMAAPass();
       this.composer.addPass(this.smaa);
     }
   }
 
-  /** The adaptive step: drop ambient occlusion when frames stay slow. */
-  degrade(): void {
-    if (this.ao) this.ao.enabled = false;
+  /**
+   * One adaptive step when frames stay slow: ambient occlusion first, then multisampling (SMAA
+   * still smooths edges). False when neither is left.
+   */
+  degrade(): boolean {
+    if (this.ao?.enabled) {
+      this.ao.enabled = false;
+      return true;
+    }
+    const targets = [this.composer.renderTarget1, this.composer.renderTarget2];
+    if (targets.some((t) => t.samples > 0)) {
+      for (const t of targets) {
+        t.samples = 0;
+        t.dispose();
+      }
+      return true;
+    }
+    return false;
+  }
+
+  /** Where the adaptive steps have got to, for evidence and tests. */
+  get state() {
+    return {
+      quality: this.quality,
+      ao: this.ao?.enabled ?? false,
+      msaa: this.composer.renderTarget1.samples,
+    };
   }
 
   setSize(width: number, height: number, pixelRatio: number): void {
