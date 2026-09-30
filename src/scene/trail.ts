@@ -14,6 +14,7 @@ import { tarn, terrace } from "./highlands";
 import { mesh, PALETTE, rng } from "./kit";
 import { BOOKMARKS, type BookmarkName, followPose, LAYOUT, type Pose, RADIUS } from "./layout";
 import { ford, gate, hollow } from "./lowlands";
+import { Opening } from "./opening";
 import { hiker, nameBoard, stone } from "./props";
 import type { Quality } from "./render/pipeline";
 import { shelter } from "./shelter";
@@ -33,6 +34,7 @@ interface Stop {
 }
 
 export class TrailScene {
+  readonly opening = new Opening();
   private readonly stage: Stage;
   private readonly stops: Stop[] = [];
   private readonly markers: { routes: string[]; mat: THREE.MeshStandardMaterial }[] = [];
@@ -236,12 +238,13 @@ export class TrailScene {
     }
     const cam = this.stage.camera;
     const sway = this.calm ? 0 : Math.sin(time * 0.15) * 0.25 + this.pointer.x * 0.4;
-    const pose: Pose = this.bookmark
+    const home: Pose = this.bookmark
       ? BOOKMARKS[this.bookmark](cam.aspect)
       : followPose(this.focus, cam.aspect, sway);
+    const pose = this.opening.update(dt, cam, home, this.calm);
     cam.position.copy(pose.position);
     cam.lookAt(pose.target);
-    this.stage.aimLight(this.bookmark ? pose.target : this.focus);
+    this.stage.aimLight(this.bookmark || this.opening.phase !== "done" ? pose.target : this.focus);
     const w = this.walker.group;
     w.rotation.y = this.calm ? 0.3 : 0.3 + Math.sin(time * 0.7) * 0.08;
     this.walker.jar.update(time, this.calm);

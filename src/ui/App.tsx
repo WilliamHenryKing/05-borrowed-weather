@@ -10,9 +10,11 @@ import { type Action, apply, createGame, type GameState } from "../game/state";
 import { LOCATIONS, type LocationId, WEATHERS } from "../game/world";
 import { worldReady } from "../loader";
 import { loadAssets, loadDeferred, setAssets } from "../scene/assets";
+import { wantsTitle } from "../scene/opening";
 import { detectQuality } from "../scene/render/pipeline";
 import { TrailScene } from "../scene/trail";
 import { installVisualTest, visualTestEnabled } from "../scene/visual-test";
+import { Guide } from "./Guide";
 import { Hud } from "./Hud";
 import { Intro } from "./Intro";
 import { Modal } from "./Modal";
@@ -28,7 +30,29 @@ export function App() {
   const gameRef = useRef(game);
   const [message, setMessage] = useState("");
   const [hint, setHint] = useState<string | null>(null);
-  const [intro, setIntro] = useState(true);
+  const [opening, setOpening] = useState<"title" | "glide" | "done">(() =>
+    wantsTitle() ? "title" : "done",
+  );
+  const openingRef = useRef(opening);
+  const [guide, setGuide] = useState(() => {
+    try {
+      return localStorage.getItem("borrowed-weather:guide") ? -1 : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const guideRef = useRef(guide);
+  const guideTo = useCallback((step: number) => {
+    guideRef.current = step;
+    setGuide(step);
+    if (step < 0) {
+      try {
+        localStorage.setItem("borrowed-weather:guide", "seen");
+      } catch {
+        /* Optional storage. */
+      }
+    }
+  }, []);
   const [panel, setPanel] = useState<"none" | "notebook" | "postcard">("none");
   const [sound] = useState(() => new SoundBoard());
   const [muted, setMuted] = useState(sound.muted);
@@ -36,6 +60,7 @@ export function App() {
 
   const act = useCallback(
     (action: Action) => {
+      if (openingRef.current !== "done") return;
       const before = gameRef.current;
       const out = apply(before, action);
       const noted = out.found
@@ -49,11 +74,14 @@ export function App() {
       gameRef.current = out.state;
       setGame(out.state);
       setHint(null);
-      setIntro(false);
+      const step = guideRef.current;
+      if ((step === 0 || step === 2) && action.type === "travel") guideTo(step + 1);
+      if (step === 1 && action.type === "take") guideTo(2);
+      if (step === 3 && action.type === "release") guideTo(-1);
       if (out.state.finished && !before.finished)
         window.setTimeout(() => setPanel("postcard"), 1400);
     },
-    [sound],
+    [sound, guideTo],
   );
 
   useEffect(() => {
@@ -79,6 +107,10 @@ export function App() {
         !capture,
       );
       trail.sync(gameRef.current, true);
+      trail.opening.onDone = () => {
+        openingRef.current = "done";
+        setOpening("done");
+      };
       trail.onPick = (to: LocationId) => act({ type: "travel", to });
       trail.start();
       scene.current = trail;
@@ -145,9 +177,25 @@ export function App() {
     setHint(nextHint(gameRef.current));
   }, [sound]);
 
+  const begin = useCallback(() => {
+    if (openingRef.current !== "title" || !scene.current) return;
+    sound.unlock();
+    sound.play("click");
+    openingRef.current = "glide";
+    setOpening("glide");
+    scene.current.opening.begin(reducedMotion());
+  }, [sound]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || document.querySelector("dialog[open]")) return;
+      if (openingRef.current !== "done") {
+        if (e.key === "Enter" && !e.repeat) {
+          e.preventDefault();
+          begin();
+        }
+        return;
+      }
       const target = e.target as HTMLElement | null;
       if (target?.closest("input, textarea")) return;
       const s = gameRef.current;
@@ -168,30 +216,35 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [act, showHint, toggleMute]);
+  }, [act, showHint, toggleMute, begin]);
 
   return (
     <main className="relative h-dvh w-full select-none">
       <div ref={host} className="absolute inset-0" />
-      <Hud
-        state={game}
-        message={message}
-        onAction={act}
-        onNotebook={() => setPanel("notebook")}
-        onHint={showHint}
-        hint={hint}
-        muted={muted}
-        onMute={toggleMute}
-      />
-      {intro && (
-        <Intro
-          onBegin={() => {
-            sound.unlock();
-            sound.play("click");
-            setIntro(false);
-          }}
-        />
+      {opening === "done" && (
+        <>
+          <Hud
+            state={game}
+            message={message}
+            onAction={act}
+            onNotebook={() => setPanel("notebook")}
+            onHint={showHint}
+            hint={hint}
+            muted={muted}
+            onMute={toggleMute}
+          />
+          <button
+            type="button"
+            className="btn replay-guide"
+            aria-label="Replay the guide"
+            onClick={() => guideTo(0)}
+          >
+            ?
+          </button>
+          {guide >= 0 && panel === "none" && <Guide step={guide} onSkip={() => guideTo(-1)} />}
+        </>
       )}
+      {opening === "title" && <Intro onBegin={begin} />}
       {game.finished && panel === "none" && (
         <button
           type="button"

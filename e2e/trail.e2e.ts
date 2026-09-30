@@ -9,9 +9,8 @@ test("walks the trail to the lantern shelter using take and release", async ({ p
   const plan = solve(createGame());
   expect(plan).not.toBeNull();
 
-  await page.goto("/");
+  await page.goto("/?e2e");
   await expect(page.locator("#arrival")).toHaveCount(0, { timeout: 30_000 });
-  await page.getByRole("button", { name: "Set off" }).click();
 
   const place = page.locator("#place");
   const jar = page.getByText(/^Jar holds /);

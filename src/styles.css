@@ -158,3 +158,128 @@ body {
     animation: none;
   }
 }
+.opening {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(90deg, #141a12ed, #141a1299 35%, transparent 76%);
+}
+.opening-copy {
+  margin-left: 5vw;
+  max-width: 480px;
+  width: 44vw;
+}
+.eyebrow {
+  color: var(--color-lantern);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+.opening h1 {
+  font: clamp(48px, 6vw, 86px) / 0.98 var(--font-serif);
+  letter-spacing: -0.04em;
+  margin: 22px 0;
+}
+.opening .premise {
+  font-size: 16px;
+  line-height: 1.8;
+  margin-bottom: 26px;
+}
+.enter-note {
+  margin-left: 16px;
+  font-size: 11px;
+  opacity: 0.6;
+}
+.rise {
+  animation: opening-rise 0.8s both;
+}
+.rise:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.rise:nth-child(3) {
+  animation-delay: 0.24s;
+}
+.rise:nth-child(4) {
+  animation-delay: 0.36s;
+}
+@keyframes opening-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.trail-guide {
+  position: absolute;
+  left: 20px;
+  bottom: 146px;
+  width: min(330px, calc(100vw - 40px));
+  padding: 14px 16px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.trail-guide .eyebrow {
+  margin-bottom: 6px;
+}
+.guide-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+.guide-foot button {
+  min-height: 32px;
+  text-decoration: underline;
+  font-size: 11px;
+  cursor: pointer;
+}
+.replay-guide {
+  position: absolute;
+  right: 20px;
+  top: 78px;
+  width: 44px;
+}
+@media (max-width: 639px) {
+  .opening {
+    align-items: flex-end;
+    background: linear-gradient(0deg, #141a12, #141a12e6 22%, transparent 74%);
+  }
+  .opening-copy {
+    width: auto;
+    max-width: none;
+    margin: 0 24px max(34px, env(safe-area-inset-bottom));
+  }
+  .opening h1 {
+    font-size: 54px;
+    margin: 16px 0;
+  }
+  .opening .premise {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+  .enter-note {
+    display: none;
+  }
+  .trail-guide {
+    bottom: 150px;
+    left: 12px;
+    width: calc(100vw - 24px);
+    font-size: 12px;
+    padding: 10px 12px;
+  }
+  .replay-guide {
+    right: 12px;
+    top: 124px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}
