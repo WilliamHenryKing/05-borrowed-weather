@@ -115,10 +115,10 @@ export class WeatherCell {
   }
 
   update(dt: number, time: number, calm: boolean): void {
-    const ease = 1 - Math.exp(-dt * 2.2);
+    const ease = calm ? 1 : 1 - Math.exp(-dt * 2.2);
     for (const k of ["fog", "rain", "wind"] as const)
       this.level[k] += (this.target[k] - this.level[k]) * ease;
-    const motion = calm ? 0.15 : 1;
+    const motion = calm ? 0 : 1;
 
     this.fog.setLevel(this.level.fog);
     this.fog.update(time, motion);

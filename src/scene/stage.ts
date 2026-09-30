@@ -3,9 +3,10 @@
 // exposure is the only brightness control.
 
 import * as THREE from "three";
-import type { Assets } from "./assets";
+import { type Assets, assetResources } from "./assets";
 import { Pipeline, type Quality } from "./render/pipeline";
 import { installSky, type SkyLight } from "./render/sky";
+import type { SceneResources } from "./resources";
 
 /** Exposure: the single brightness control. */
 const EXPOSURE = 2.6;
@@ -70,8 +71,14 @@ export class Stage {
   /** Objects the AO pass skips (transparent effects); filled by the scene. */
   readonly aoHidden: THREE.Object3D[] = [];
   private readonly clock = new THREE.Clock();
+  private readonly resources: SceneResources;
   private frame = 0;
   private running = false;
+  private disposed = false;
+  private raf = 0;
+  private pendingSize: { w: number; h: number; ratio: number } | null = null;
+  private readonly cancelled: Promise<void>;
+  private cancelCompile = () => {};
   private frozenAt: number | null = null;
   private paused = false;
   /** Adaptive steps: seconds the smoothed frame time has stayed over budget, and whether spent. */
@@ -92,6 +99,10 @@ export class Stage {
     readonly quality: Quality,
     assets: Assets,
   ) {
+    this.cancelled = new Promise((resolve) => {
+      this.cancelCompile = resolve;
+    });
+    this.resources = assetResources(assets);
     patchFog();
     this.renderer = new THREE.WebGLRenderer({
       antialias: false,
@@ -156,19 +167,28 @@ export class Stage {
   }
 
   readonly resize = (): void => {
+    if (this.disposed) return;
     const w = this.host.clientWidth || window.innerWidth;
     const h = this.host.clientHeight || window.innerHeight;
     // Within the tier's pixel budget (a high-density screen need not draw every device pixel).
     const budget = Math.sqrt(PIXEL_BUDGET[this.quality] / Math.max(1, w * h));
     const ratio =
       Math.min(window.devicePixelRatio || 1, MAX_RATIO[this.quality], budget) * this.renderScale;
-    this.renderer.setPixelRatio(ratio);
-    this.renderer.setSize(w, h, false);
-    this.pipeline.setSize(w, h, ratio);
+    this.pendingSize = { w, h, ratio };
     this.camera.aspect = w / h;
     this.camera.fov = w / h < 0.75 ? 52 : 40;
     this.camera.updateProjectionMatrix();
   };
+
+  /** Resizing clears the backing buffer; always apply it immediately before drawing. */
+  private applySize(): void {
+    const size = this.pendingSize;
+    if (!size) return;
+    this.pendingSize = null;
+    this.renderer.setPixelRatio(size.ratio);
+    this.renderer.setSize(size.w, size.h, false);
+    this.pipeline.setSize(size.w, size.h, size.ratio);
+  }
 
   /**
    * Compile every shader before the first frame: in parallel where the browser allows
@@ -177,14 +197,17 @@ export class Stage {
    * finishes each program for the layouts and passes it will meet (ANGLE builds its D3D shaders
    * at the first draw). All behind the arrival veil.
    */
-  async precompile(): Promise<void> {
+  async precompile(): Promise<boolean> {
+    if (this.disposed) return false;
+    this.applySize();
     const r = this.renderer;
     const composer = this.pipeline.composer;
     const previous = r.getRenderTarget();
     r.setRenderTarget(composer.readBuffer);
     const compiling = r.compileAsync(this.scene, this.camera);
     r.setRenderTarget(previous);
-    await compiling;
+    await Promise.race([compiling, this.cancelled]);
+    if (this.disposed) return false;
     const culled: THREE.Object3D[] = [];
     this.scene.traverse((o) => {
       if (o.frustumCulled) {
@@ -192,8 +215,13 @@ export class Stage {
         culled.push(o);
       }
     });
-    this.pipeline.render();
-    for (const o of culled) o.frustumCulled = true;
+    try {
+      this.applySize();
+      this.pipeline.render();
+    } finally {
+      for (const o of culled) o.frustumCulled = true;
+    }
+    return true;
   }
 
   /**
@@ -201,36 +229,42 @@ export class Stage {
    * compiled in parallel, so their arrival never stalls a frame.
    */
   async reveal(objects: THREE.Object3D[]): Promise<void> {
+    if (this.disposed) return;
     for (const o of objects) o.visible = false;
     const r = this.renderer;
     const previous = r.getRenderTarget();
     r.setRenderTarget(this.pipeline.composer.readBuffer);
     const compiling = Promise.all(objects.map((o) => r.compileAsync(o, this.camera, this.scene)));
     r.setRenderTarget(previous);
-    await compiling;
+    await Promise.race([compiling, this.cancelled]);
+    if (this.disposed) return;
     for (const o of objects) o.visible = true;
   }
 
   start(): void {
+    if (this.disposed || this.running) return;
     this.running = true;
+    this.clock.start();
     const tick = () => {
       if (!this.running) return;
       if (this.paused) {
-        requestAnimationFrame(tick);
+        this.raf = requestAnimationFrame(tick);
         return;
       }
       const raw = Math.min(this.clock.getDelta(), 0.1);
       this.watchFrameTime(raw);
       const dt = this.frozenAt === null ? raw : 0;
+      this.applySize();
       this.onFrame(dt, this.frozenAt ?? this.clock.elapsedTime);
+      if (this.disposed) return;
       this.pipeline.render();
       if (this.frame++ === 0) this.onFirstFrame();
       const due = this.waiters.filter((w) => this.frame >= w.frame);
       this.waiters = this.waiters.filter((w) => this.frame < w.frame);
       for (const w of due) w.done();
-      requestAnimationFrame(tick);
+      if (this.running) this.raf = requestAnimationFrame(tick);
     };
-    requestAnimationFrame(tick);
+    this.raf = requestAnimationFrame(tick);
   }
 
   /** Stop scene time (visual tests); rendering continues so captures stay live. */
@@ -286,6 +320,7 @@ export class Stage {
 
   /** Resolve once `frames` more frames have been rendered. */
   settle(frames: number): Promise<void> {
+    if (this.disposed || frames <= 0) return Promise.resolve();
     return new Promise((done) => this.waiters.push({ frame: this.frame + frames, done }));
   }
 
@@ -301,9 +336,21 @@ export class Stage {
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
     this.running = false;
+    cancelAnimationFrame(this.raf);
+    this.cancelCompile();
+    this.pendingSize = null;
+    for (const waiter of this.waiters.splice(0)) waiter.done();
+    this.onFrame = () => {};
+    this.onFirstFrame = () => {};
+    this.onDegrade = () => {};
+    this.aoHidden.length = 0;
     window.removeEventListener("resize", this.resize);
     this.pipeline.dispose();
+    this.sky.dispose();
+    this.resources.release(this.key.shadow);
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }

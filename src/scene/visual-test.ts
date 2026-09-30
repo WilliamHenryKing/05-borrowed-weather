@@ -22,6 +22,8 @@ export interface VisualTestHook {
   quality(): Record<string, unknown>;
   /** Take one governor step down, as a slow frame run would (false when nothing is left). */
   degrade(): boolean;
+  /** Read-only travel/pointer state; never changes puzzle state. */
+  movement(): ReturnType<TrailScene["movementForTests"]>;
 }
 
 declare global {
@@ -58,10 +60,11 @@ export function installVisualTest(trail: TrailScene): () => void {
     settle: (frames = 3) => stage.settle(frames),
     quality: () => stage.qualityState,
     degrade: () => stage.degrade(),
+    movement: () => trail.movementForTests(),
   };
   window.__VISUAL_TEST__ = hook;
   void stage.settle(1).then(() => {
-    hook.ready = true;
+    if (window.__VISUAL_TEST__ === hook) hook.ready = true;
   });
   return () => {
     if (window.__VISUAL_TEST__ === hook) delete window.__VISUAL_TEST__;

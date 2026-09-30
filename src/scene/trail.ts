@@ -5,23 +5,26 @@ import gsap from "gsap";
 import * as THREE from "three";
 import { type GameState, openRoutes } from "../game/state";
 import { LOCATION_INFO, LOCATIONS, type LocationId, ROUTES } from "../game/world";
-import type { Assets } from "./assets";
+import { type Assets, assetResources, disposeAssets } from "./assets";
 import { Backdrop } from "./backdrop";
 import { CloudFloor } from "./cloud-floor";
 import type { DioramaParts } from "./diorama";
-import { setFoliageDensity, setFoliageReveal, setWind } from "./foliage";
+import { clearFog } from "./fog";
+import { clearFoliage, setFoliageDensity, setFoliageReveal, setWind } from "./foliage";
 import { tarn, terrace } from "./highlands";
-import { mesh, PALETTE, rng } from "./kit";
+import { TapGesture } from "./input";
+import { clearKit, mesh, PALETTE, rng } from "./kit";
 import { BOOKMARKS, type BookmarkName, followPose, LAYOUT, type Pose, RADIUS } from "./layout";
 import { ford, gate, hollow } from "./lowlands";
+import { TravelMotion } from "./motion";
 import { Opening } from "./opening";
-import { hiker, nameBoard, stone } from "./props";
+import { clearProps, hiker, nameBoard, stone } from "./props";
 import type { Quality } from "./render/pipeline";
 import { shelter } from "./shelter";
 import { Stage } from "./stage";
 import type { TerrainHandle } from "./terrain";
 import { Transfer } from "./transfer";
-import { cheapWater } from "./water";
+import { cheapWater, clearWater } from "./water";
 import { WeatherCell } from "./weather";
 
 const BUILD = { gate, ford, hollow, terrace, tarn, shelter } as const;
@@ -43,11 +46,19 @@ export class TrailScene {
   private readonly backdrop: Backdrop;
   private readonly cloudFloor: CloudFloor;
   private readonly focus = new THREE.Vector3();
+  private readonly movement = new TravelMotion(this.walker.group.position, this.focus);
+  private readonly gesture = new TapGesture();
+  private readonly removeFoliageReveal: () => void;
   private readonly pointer = new THREE.Vector2();
   private readonly raycaster = new THREE.Raycaster();
   private state: GameState | null = null;
   private calm: boolean;
-  private down: { x: number; y: number } | null = null;
+  private inputEnabled = true;
+  private disposed = false;
+  private starting: Promise<boolean> | null = null;
+  private motionTime = 0;
+  private readonly motionPreference: MediaQueryList;
+  private observedMotion: boolean;
   private bookmark: BookmarkName | null = null;
   onPick: (id: LocationId) => void = () => {};
 
@@ -55,11 +66,13 @@ export class TrailScene {
     host: HTMLElement,
     calm: boolean,
     onReady: () => void,
-    loaded: Assets,
+    private readonly loaded: Assets,
     quality: Quality,
     adaptive = true,
   ) {
     this.calm = calm;
+    this.motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    this.observedMotion = this.motionPreference.matches;
     // Keep tweens on wall-clock time: slow devices jump rather than crawl in slow motion.
     gsap.ticker.lagSmoothing(0);
     setFoliageDensity(quality === "low" ? 0.35 : 1);
@@ -67,7 +80,7 @@ export class TrailScene {
     this.stage.adaptive = adaptive;
     this.stage.onDegrade = cheapWater;
     this.stage.onFirstFrame = onReady;
-    setFoliageReveal((objects) => this.stage.reveal(objects));
+    this.removeFoliageReveal = setFoliageReveal((objects) => this.stage.reveal(objects));
     LOCATIONS.forEach((id, i) => {
       const parts = BUILD[id](RADIUS, 11 + i * 17);
       const root = new THREE.Group();
@@ -120,27 +133,55 @@ export class TrailScene {
     this.stage.renderer.domElement.addEventListener("pointerdown", this.onDown);
     this.stage.renderer.domElement.addEventListener("pointerup", this.onUp);
     this.stage.renderer.domElement.addEventListener("pointermove", this.onMove);
+    this.stage.renderer.domElement.addEventListener("pointercancel", this.onCancel);
+    this.stage.renderer.domElement.addEventListener("lostpointercapture", this.onCancel);
+    this.stage.renderer.domElement.addEventListener("pointerleave", this.onLeave);
+    window.addEventListener("blur", this.onBlur);
+    document.addEventListener("visibilitychange", this.onVisibility);
   }
 
   /** Compile every shader behind the arrival veil, then start the frame loop. */
-  async start(): Promise<void> {
-    await this.stage.precompile();
-    this.stage.start();
+  start(): Promise<boolean> {
+    if (this.disposed) return Promise.resolve(false);
+    this.starting ??= this.stage.precompile().then((compiled) => {
+      if (!compiled || this.disposed) return false;
+      this.stage.start();
+      return true;
+    });
+    return this.starting;
   }
 
   setCalm(calm: boolean): void {
+    if (this.disposed || this.calm === calm) return;
     this.calm = calm;
+    if (calm) {
+      this.movement.finish();
+      this.walker.jar.finish();
+      this.transfer.finish();
+      this.opening.finish();
+      if (this.state) this.sync(this.state, true);
+    }
+  }
+
+  setInputEnabled(enabled: boolean): void {
+    this.inputEnabled = enabled && !this.disposed;
+    if (!this.inputEnabled) this.resetPointer();
   }
 
   /** Bring the scene in line with the game. `instant` skips tweens (first sync, replay). */
   sync(next: GameState, instant = false): void {
+    if (this.disposed) return;
     const prev = this.state;
     this.state = next;
-    for (const s of this.stops) s.cell.set(next.weather[s.id], instant);
+    const snap = instant || this.calm;
+    if (instant) this.transfer.finish();
+    for (const s of this.stops) s.cell.set(next.weather[s.id], snap);
     const open = openRoutes(next.weather);
     for (const m of this.markers) {
       const lit = m.routes.some((r) => open.has(r));
-      gsap.to(m.mat, { emissiveIntensity: lit ? 1.6 : 0, duration: instant ? 0 : 0.6 });
+      gsap.killTweensOf(m.mat);
+      if (snap) m.mat.emissiveIntensity = lit ? 1.6 : 0;
+      else gsap.to(m.mat, { emissiveIntensity: lit ? 1.6 : 0, duration: 0.6 });
       m.mat.color.set(lit ? "#ffe1ad" : "#6a6a60");
     }
     const animate = !instant && prev !== null && prev.at === next.at;
@@ -151,8 +192,9 @@ export class TrailScene {
       const jar = this.walker.jar.group.getWorldPosition(new THREE.Vector3());
       this.transfer.burst(kind, centre, jar, next.jar !== null, this.calm);
     }
-    const moved = !prev || prev.at !== next.at;
+    const moved = instant || !prev || prev.at !== next.at;
     if (moved) this.walkTo(prev ? prev.trail.length : 0, next, instant || !prev);
+    if (snap) this.frame(0, 0, true);
   }
 
   private walkTo(from: number, s: GameState, instant: boolean): void {
@@ -161,31 +203,7 @@ export class TrailScene {
     const target = this.stopOf(s.at)
       .root.position.clone()
       .add(new THREE.Vector3(0, 0.7, 0));
-    gsap.killTweensOf(this.walker.group.position);
-    gsap.killTweensOf(this.focus);
-    if (instant || this.calm) {
-      this.walker.group.position.copy(end);
-      this.focus.copy(target);
-      return;
-    }
-    const tl = gsap.timeline();
-    const leg = 0.55;
-    for (const p of path.slice(1)) {
-      tl.to(this.walker.group.position, { x: p.x, z: p.z, duration: leg, ease: "sine.inOut" });
-      tl.to(this.walker.group.position, { y: p.y + 0.5, duration: leg / 2, ease: "sine.out" }, `<`);
-      tl.to(
-        this.walker.group.position,
-        { y: p.y, duration: leg / 2, ease: "sine.in" },
-        `<${leg / 2}`,
-      );
-    }
-    gsap.to(this.focus, {
-      x: target.x,
-      y: target.y,
-      z: target.z,
-      duration: Math.max(0.9, tl.duration()),
-      ease: "power2.inOut",
-    });
+    this.movement.move(path.length ? path : [end], target, instant || this.calm);
   }
 
   private stopOf(id: LocationId): Stop {
@@ -226,35 +244,53 @@ export class TrailScene {
     }
   }
 
-  private frame(dt: number, time: number): void {
+  private frame(dt: number, _time: number, instant = false): void {
+    const preference = this.motionPreference.matches;
+    if (preference !== this.observedMotion) {
+      // Some browsers update matches before dispatching change; only react to a change in
+      // the observed preference so an explicit initial calm setting is still respected.
+      this.observedMotion = preference;
+      this.setCalm(preference);
+    }
     const s = this.state;
     if (!s) return;
-    setWind(time, this.calm ? 0.15 : 1);
+    if (!this.calm) this.motionTime += dt;
+    const time = this.motionTime;
+    setWind(time, this.calm ? 0 : 1);
     for (const stop of this.stops) {
       stop.cell.update(dt, time, this.calm);
       const terrain = stop.parts.group.userData.terrain as TerrainHandle | undefined;
       if (terrain) terrain.wetness.value = stop.cell.level.rain;
-      stop.parts.update(dt, time, this.calm, stop.cell.level, s);
+      stop.parts.update(this.calm ? 0 : dt, time, this.calm, stop.cell.level, s, instant);
     }
     const cam = this.stage.camera;
     const sway = this.calm ? 0 : Math.sin(time * 0.15) * 0.25 + this.pointer.x * 0.4;
+    const w = this.stage.renderer.domElement.clientWidth || innerWidth;
+    const h = this.stage.renderer.domElement.clientHeight || innerHeight;
+    const rail =
+      w <= 720 && h <= 550 && w > h
+        ? (document.querySelector<HTMLElement>(".weather-hud")?.getBoundingClientRect().width ??
+          Math.min(320, w * 0.54))
+        : 0;
     const home: Pose = this.bookmark
       ? BOOKMARKS[this.bookmark](cam.aspect)
-      : followPose(this.focus, cam.aspect, sway);
-    const pose = this.opening.update(dt, cam, home, this.calm);
+      : { ...followPose(this.focus, cam.aspect, sway, (w - rail) / h), shiftX: rail / 2 };
+    if (this.bookmark) cam.clearViewOffset();
+    const pose = this.bookmark ? home : this.opening.update(dt, cam, home, this.calm);
     cam.position.copy(pose.position);
     cam.lookAt(pose.target);
     this.stage.aimLight(this.bookmark || this.opening.phase !== "done" ? pose.target : this.focus);
-    const w = this.walker.group;
-    w.rotation.y = this.calm ? 0.3 : 0.3 + Math.sin(time * 0.7) * 0.08;
+    this.walker.group.rotation.y = this.calm ? 0.3 : 0.3 + Math.sin(time * 0.7) * 0.08;
     this.walker.jar.update(time, this.calm);
     this.transfer.update(dt);
     this.backdrop.update(time, this.calm);
-    this.cloudFloor.update(this.calm ? 0 : time);
+    this.cloudFloor.update(time);
   }
 
   private pick(clientX: number, clientY: number): LocationId | null {
+    if (!this.canPick) return null;
     const rect = this.stage.renderer.domElement.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
     const ndc = new THREE.Vector2(
       ((clientX - rect.left) / rect.width) * 2 - 1,
       -((clientY - rect.top) / rect.height) * 2 + 1,
@@ -273,19 +309,23 @@ export class TrailScene {
   }
 
   private readonly onDown = (e: PointerEvent): void => {
-    this.down = { x: e.clientX, y: e.clientY };
+    if (!this.canPick || e.button !== 0) return;
+    this.gesture.press(e.pointerId, e.clientX, e.clientY);
+    this.stage.renderer.domElement.setPointerCapture(e.pointerId);
   };
 
   private readonly onUp = (e: PointerEvent): void => {
-    if (!this.down) return;
-    const moved = Math.hypot(e.clientX - this.down.x, e.clientY - this.down.y);
-    this.down = null;
-    if (moved > 8) return;
+    const tap = this.gesture.release(e.pointerId, e.clientX, e.clientY);
+    const el = this.stage.renderer.domElement;
+    if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    if (!tap || !this.canPick) return;
     const id = this.pick(e.clientX, e.clientY);
     if (id) this.onPick(id);
   };
 
   private readonly onMove = (e: PointerEvent): void => {
+    this.gesture.move(e.pointerId, e.clientX, e.clientY);
+    if (!this.canPick) return;
     const rect = this.stage.renderer.domElement.getBoundingClientRect();
     this.pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     if (e.pointerType === "mouse") {
@@ -295,14 +335,67 @@ export class TrailScene {
     }
   };
 
+  private get canPick(): boolean {
+    return (
+      !this.disposed &&
+      !document.hidden &&
+      this.inputEnabled &&
+      this.opening.phase === "done" &&
+      !this.bookmark
+    );
+  }
+
+  private readonly onCancel = (e: PointerEvent): void => {
+    this.gesture.cancel(e.pointerId);
+    this.pointer.x = 0;
+    this.stage.renderer.domElement.style.cursor = "default";
+  };
+
+  private readonly onLeave = (): void => {
+    this.pointer.x = 0;
+    this.stage.renderer.domElement.style.cursor = "default";
+  };
+
+  private readonly onBlur = (): void => this.resetPointer();
+  private readonly onVisibility = (): void => {
+    if (document.hidden) this.resetPointer();
+  };
+
+  private resetPointer(): void {
+    const el = this.stage.renderer.domElement;
+    for (const id of this.gesture.pointers)
+      if (el.hasPointerCapture(id)) el.releasePointerCapture(id);
+    this.gesture.reset();
+    this.onLeave();
+  }
+
   /** Swap in the full-resolution sky once it has streamed in (same orientation). */
   setBackground(sky: THREE.Texture): void {
+    if (this.disposed) {
+      sky.dispose();
+      return;
+    }
     this.stage.scene.background = sky;
   }
 
   /** Visual-test hooks: pin the camera to a named bookmark (null returns to play). */
   setBookmark(name: BookmarkName | null): void {
     this.bookmark = name;
+    this.resetPointer();
+  }
+
+  movementForTests() {
+    const expected = this.state ? this.standPoint(this.state.at) : this.walker.group.position;
+    return {
+      active: this.movement.active,
+      calm: this.calm,
+      at: this.state?.at ?? null,
+      walker: this.walker.group.position.toArray(),
+      expected: expected.toArray(),
+      focus: this.focus.toArray(),
+      distance: this.walker.group.position.distanceTo(expected),
+      pointers: this.gesture.pointers.size,
+    };
   }
 
   get stageForTests(): Stage {
@@ -310,11 +403,35 @@ export class TrailScene {
   }
 
   dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.resetPointer();
     const el = this.stage.renderer.domElement;
     el.removeEventListener("pointerdown", this.onDown);
     el.removeEventListener("pointerup", this.onUp);
     el.removeEventListener("pointermove", this.onMove);
-    gsap.killTweensOf(this.focus);
+    el.removeEventListener("pointercancel", this.onCancel);
+    el.removeEventListener("lostpointercapture", this.onCancel);
+    el.removeEventListener("pointerleave", this.onLeave);
+    window.removeEventListener("blur", this.onBlur);
+    document.removeEventListener("visibilitychange", this.onVisibility);
+    this.movement.cancel();
+    this.walker.jar.finish();
+    this.transfer.finish();
+    for (const marker of this.markers) gsap.killTweensOf(marker.mat);
+    this.opening.onDone = () => {};
+    this.onPick = () => {};
+    this.removeFoliageReveal();
+    const resources = assetResources(this.loaded);
+    resources.tree(this.stage.scene);
+    for (const material of this.transfer.materials) resources.material(material);
+    clearFoliage(resources);
+    clearFog(resources);
+    clearProps(resources);
+    clearKit(resources);
+    clearWater(resources);
+    disposeAssets(this.loaded);
     this.stage.dispose();
+    this.stage.scene.clear();
   }
 }

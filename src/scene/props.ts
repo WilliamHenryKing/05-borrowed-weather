@@ -5,6 +5,7 @@ import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { assets, type Scan, tiled } from "./assets";
 import { Jar } from "./jar";
 import { fbm, mesh, PALETTE, rng, solid } from "./kit";
+import type { SceneResources } from "./resources";
 import { terrainMaterial } from "./terrain";
 
 /**
@@ -131,6 +132,12 @@ export function boulder(size: number, seed: number, wet = 0.4): THREE.Group {
 export { flowers, grassField as grass } from "./foliage";
 
 const woods = new Map<string, THREE.MeshStandardMaterial>();
+
+export function clearProps(resources: SceneResources): void {
+  for (const material of [...tints.values(), ...woods.values()]) resources.material(material);
+  tints.clear();
+  woods.clear();
+}
 
 /** Scanned wood: weathered planks for joinery, bark for logs. `repeat` sets texel density. */
 export function wood(kind: "planks" | "bark", tone = 1, repeat: [number, number] = [1, 1]) {

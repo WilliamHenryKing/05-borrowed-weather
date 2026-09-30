@@ -16,16 +16,28 @@ export const RADIUS = 2.3;
 export interface Pose {
   position: THREE.Vector3;
   target: THREE.Vector3;
+  /** Full-viewport pixels reserved by a HUD, shared by rendering and pointer projection. */
+  shiftX?: number;
 }
 
 const at = (id: LocationId, x: number, y: number, z: number) =>
   new THREE.Vector3(...LAYOUT[id]).add(new THREE.Vector3(x, y, z));
 
 /** The gameplay camera: above and in front of the focused diorama. */
-export function followPose(focus: THREE.Vector3, aspect: number, sway = 0): Pose {
+export function followPose(
+  focus: THREE.Vector3,
+  aspect: number,
+  sway = 0,
+  playAspect = aspect,
+): Pose {
   const tall = aspect < 0.75;
+  const fit = tall ? 1 : Math.max(1, 1.2 / Math.max(0.1, playAspect));
   return {
-    position: focus.clone().add(new THREE.Vector3(1.2 + sway, tall ? 5.4 : 3.4, tall ? 10.5 : 7.4)),
+    position: focus
+      .clone()
+      .add(
+        new THREE.Vector3((1.2 + sway) * fit, (tall ? 5.4 : 3.4) * fit, (tall ? 10.5 : 7.4) * fit),
+      ),
     target: focus.clone().add(new THREE.Vector3(0, tall ? -0.4 : 0, 0)),
   };
 }

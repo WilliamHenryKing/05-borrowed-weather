@@ -24,6 +24,11 @@ export class Opening {
     this.from = this.last;
     if (calm) this.onDone();
   }
+  finish() {
+    if (this.phase !== "glide") return;
+    this.phase = "done";
+    this.onDone();
+  }
   update(dt: number, camera: THREE.PerspectiveCamera, home: Pose, calm: boolean): Pose {
     const veil = document.getElementById("arrival");
     if (!veil || veil.classList.contains("is-done")) this.time += dt;
@@ -39,7 +44,7 @@ export class Opening {
       if (!calm) pose.position.x += Math.sin(this.time * 0.14) * 0.2;
       this.last = pose;
     } else if (this.phase === "glide") {
-      const t = ease(this.time / 2.8);
+      const t = calm ? 1 : ease(this.time / 2.8);
       const from = this.from ?? home;
       pose = {
         position: from.position.clone().lerp(home.position, t),
@@ -57,7 +62,7 @@ export class Opening {
     camera.setViewOffset(
       w,
       h,
-      portrait ? 0 : -0.16 * w * weight,
+      (portrait ? 0 : -0.16 * w * weight) + (home.shiftX ?? 0) * (1 - weight),
       portrait ? 0.18 * h * weight : 0,
       w,
       h,

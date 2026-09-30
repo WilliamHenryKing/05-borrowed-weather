@@ -91,7 +91,6 @@ export function detectQuality(): Quality {
 export class Pipeline {
   readonly composer: EffectComposer;
   private readonly ao: GTAOPass | null = null;
-  private readonly smaa: SMAAPass | null = null;
 
   constructor(
     readonly renderer: THREE.WebGLRenderer,
@@ -169,8 +168,7 @@ export class Pipeline {
     this.composer.addPass(new ShaderPass(GradeShader));
     this.composer.addPass(new OutputPass());
     if (glare) {
-      this.smaa = new SMAAPass();
-      this.composer.addPass(this.smaa);
+      this.composer.addPass(new SMAAPass());
     }
   }
 
@@ -214,8 +212,15 @@ export class Pipeline {
   }
 
   dispose(): void {
-    this.ao?.dispose();
-    this.smaa?.dispose();
+    for (const pass of this.composer.passes) {
+      // These materials are omitted by the pinned Three.js 0.186 pass disposers.
+      if (pass instanceof GTAOPass) {
+        pass.gtaoMaterial.dispose();
+        pass.blendMaterial.dispose();
+      }
+      if (pass instanceof UnrealBloomPass) pass.materialHighPassFilter.dispose();
+      pass.dispose();
+    }
     this.composer.dispose();
   }
 }

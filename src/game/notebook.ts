@@ -46,7 +46,7 @@ export const DISCOVERIES: readonly Discovery[] = [
     title: "Borrowing has a cost",
     text: "With its breeze in my jar, the lift stops. Whatever I take stops working where it was.",
     sketch: "pause",
-    seen: (s) => s.at === "terrace" && s.jar === "wind",
+    seen: (s) => s.at === "terrace" && s.jar === "wind" && !has(s.weather, "terrace", "wind"),
   },
   {
     id: "ferns",

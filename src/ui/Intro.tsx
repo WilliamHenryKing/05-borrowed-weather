@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 export function Intro({ onBegin }: { onBegin: () => void }) {
   const button = useRef<HTMLButtonElement>(null);
-  useEffect(() => button.current?.focus(), []);
+  useEffect(() => button.current?.focus({ preventScroll: true }), []);
   return (
     <section className="opening" aria-labelledby="intro-title">
       <div className="opening-copy">

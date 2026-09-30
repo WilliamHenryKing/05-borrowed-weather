@@ -66,7 +66,7 @@ There is no timer and no fail state: every take can be undone by releasing it wh
 
 three.js 0.186 (no React Three Fiber), React 19, strict TypeScript, Vite, GSAP, Tailwind CSS 4, Biome and Bun, with Playwright for the end-to-end walk. The world is lit by one CC0 sky and built from scanned CC0 rock, turf, wood and foliage, with the islands, fog, water and effects authored in code.
 
-- **Weather routing solver.** The rules are pure TypeScript. A breadth-first search over all 37,000 reachable puzzle states proves in the tests that the trail can be finished from every one of them (no dead ends) and that every borrow can be undone. The same search powers the in-game hint.
+- **Weather routing solver.** The rules are pure TypeScript. A breadth-first search over all 37,430 reachable puzzle states proves in the tests that the trail can be finished from every one of them (no dead ends) and that every borrow can be undone. The same search powers the in-game hint.
 - **One lighting model.** A CC0 HDRI is both the visible sky and the image-based light. Its sun is measured out of the image (direction, illuminance, colour), removed from the lighting copy so it is not counted twice, and handed to the key light. The post chain is GTAO, thresholded bloom, SMAA, then AgX once; exposure is the only brightness control.
 - **Layered fog.** Each bank is a stack of horizontal sheets running an fbm noise shader, dense in the middle and feathered at the edges, with noisy billboards for side volume. Its level sinks and thins the bank as you bottle it.
 - **Weather-aware sound mix.** A pure function maps where you stand to rain, wind, river and bird beds, and adds a low-pass filter while fog is present. Web Audio glides between mixes, and nothing loads until your first gesture.
@@ -77,10 +77,10 @@ three.js 0.186 (no React Three Fiber), React 19, strict TypeScript, Vite, GSAP, 
 bun install
 bun run dev      # http://127.0.0.1:4515/
 bun run check    # strict tsc, Biome, bun test, production build into dist/
-bun run e2e      # optional: Playwright walks the whole trail in headless Chromium
+bun run e2e      # full trail, replay, notebook, touch layouts and loading/input regressions
 ```
 
-The rules live in `src/game/` (tested in `tests/`), the three.js scene in `src/scene/`, sound in `src/audio/` and the React HUD in `src/ui/`. The end-to-end test needs a Playwright Chromium (`bunx playwright install chromium`).
+The rules live in `src/game/` (tested in `tests/`), the three.js scene in `src/scene/`, sound in `src/audio/` and the React HUD in `src/ui/`. The browser suite needs Playwright Chromium (`bunx playwright install chromium`). The collection release runner uses installed Chrome on the real GPU; `REQUIRE_REAL_GPU=1` also asserts the RTX renderer. It covers two complete trails, ending/replay, discoveries, live reduced motion, held keys, slow loading and three touch layouts.
 
 ## Credits
 

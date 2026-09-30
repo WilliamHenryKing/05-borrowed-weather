@@ -58,6 +58,10 @@ export class Transfer {
 
   /** Start a swirl between the area around `centre` and the jar at `jar`. */
   burst(kind: Weather, centre: THREE.Vector3, jar: THREE.Vector3, inward: boolean, calm: boolean) {
+    if (calm) {
+      this.finish();
+      return;
+    }
     this.jar.copy(jar);
     this.inward = inward;
     this.t = 0;
@@ -80,6 +84,17 @@ export class Transfer {
       const s = kind === "fog" ? 0.5 + r() * 0.5 : kind === "rain" ? 0.07 : 0.12;
       w.size.set(kind === "wind" ? s * 3 : s, kind === "rain" ? s * 2.4 : s);
     });
+  }
+
+  finish(): void {
+    this.t = 1;
+    this.group.visible = false;
+    for (const material of Object.values(this.mats)) material.opacity = 0;
+  }
+
+  /** Some weather materials are currently unassigned to sprites but still owned. */
+  get materials(): THREE.SpriteMaterial[] {
+    return Object.values(this.mats);
   }
 
   update(dt: number): void {

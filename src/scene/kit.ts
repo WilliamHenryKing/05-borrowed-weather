@@ -1,6 +1,7 @@
 // Small procedural toolkit: palette, seeded noise, displaced and vertex-coloured geometry.
 
 import * as THREE from "three";
+import type { SceneResources } from "./resources";
 
 export const PALETTE = {
   moss: new THREE.Color("#5f7a3a"),
@@ -96,6 +97,11 @@ export function roughen(
 }
 
 const cache = new Map<string, THREE.MeshStandardMaterial>();
+
+export function clearKit(resources: SceneResources): void {
+  for (const material of cache.values()) resources.material(material);
+  cache.clear();
+}
 
 /** Shared vertex-coloured material, rough and matte like wet stone and moss. */
 export function earthy(roughness = 0.92): THREE.MeshStandardMaterial {

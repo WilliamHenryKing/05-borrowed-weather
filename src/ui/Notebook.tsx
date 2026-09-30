@@ -8,7 +8,7 @@ import { Sketch } from "./Glyphs";
 export function Notebook({ state, onClose }: { state: GameState; onClose: () => void }) {
   const seated = LOCATION_INFO[state.at].hasSeat;
   return (
-    <div className="paper p-5 sm:p-7">
+    <div className="paper notebook p-5 sm:p-7">
       <div className="flex items-baseline justify-between gap-4">
         <h2 className="text-2xl italic">Field notebook</h2>
         <p className="font-sans text-xs tracking-widest text-ink/60 uppercase">

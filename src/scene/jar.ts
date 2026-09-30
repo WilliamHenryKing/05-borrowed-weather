@@ -96,34 +96,38 @@ export class Jar {
 
   /** Change the contents; `animate` plays the capture or release gulp. */
   set(kind: Weather | null, animate: boolean, calm = false): void {
-    if (kind === this.kind) return;
+    if (kind === this.kind && animate && !calm) return;
     const capture = kind !== null;
-    this.kind = kind ?? this.kind;
+    const displayed = kind ?? this.kind;
+    this.kind = kind;
     gsap.killTweensOf(this);
     gsap.killTweensOf(this.group.scale);
-    if (!animate) {
-      this.kind = kind;
-      this.fill = kind ? 1 : 0;
-      this.show(kind);
-      this.group.scale.setScalar(1);
+    if (!animate || calm) {
+      this.finish();
       return;
     }
-    this.show(this.kind);
+    this.show(displayed);
     gsap.to(this, {
       fill: capture ? 1 : 0,
       duration: 0.9,
       ease: capture ? "power2.out" : "power2.in",
       onComplete: () => {
-        this.kind = kind;
         this.show(kind);
       },
     });
-    if (calm) return;
     gsap.fromTo(
       this.group.scale,
       { x: 1, y: 1, z: 1 },
       { x: 1.35, y: 1.25, z: 1.35, duration: 0.18, yoyo: true, repeat: 1, ease: "sine.out" },
     );
+  }
+
+  finish(): void {
+    gsap.killTweensOf(this);
+    gsap.killTweensOf(this.group.scale);
+    this.fill = this.kind ? 1 : 0;
+    this.show(this.kind);
+    this.group.scale.setScalar(1);
   }
 
   update(time: number, calm: boolean): void {

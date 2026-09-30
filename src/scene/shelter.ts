@@ -166,8 +166,8 @@ export function shelter(radius: number, seed: number): DioramaParts {
     stand: new THREE.Vector3(0.1, 0, 1.2),
     fogHeight: 0.6,
     fogSpread: 1.2,
-    update(dt, time, calm, _lv, state) {
-      const ease = 1 - Math.exp(-dt * 1.8);
+    update(dt, time, calm, _lv, state, instant = false) {
+      const ease = instant || calm ? 1 : 1 - Math.exp(-dt * 1.8);
       for (const k of KINDS) shown[k] += ((state.restored.includes(k) ? 1 : 0) - shown[k]) * ease;
       spin += dt * shown.wind * (calm ? 0.6 : 4);
       vane.rotation.y = spin;

@@ -103,8 +103,13 @@ const fail = (state: GameState, message: string): Outcome => ({
   found: [],
 });
 
-function settle(prev: GameState, next: GameState, message: string): Outcome {
-  const found = discover(next).filter((d) => !prev.discoveries.includes(d));
+function settle(
+  prev: GameState,
+  next: GameState,
+  message: string,
+  observed = discover(next),
+): Outcome {
+  const found = [...new Set(observed)].filter((d) => !prev.discoveries.includes(d));
   const finished = WEATHERS.every((k) => next.restored.includes(k));
   return {
     state: { ...next, discoveries: [...prev.discoveries, ...found], finished },
@@ -130,6 +135,7 @@ export function apply(state: GameState, action: Action): Outcome {
         state,
         { ...state, at: action.to, trail: [...state.trail, ...path] },
         `You walk to ${LOCATION_INFO[action.to].name}.`,
+        path.flatMap((at) => discover({ ...state, at })),
       );
     }
     case "take": {

@@ -13,5 +13,12 @@ export interface DioramaParts {
   readonly fogHeight: number;
   readonly fogSpread: number;
   /** Called every frame with the fading weather levels at this location. */
-  update(dt: number, time: number, calm: boolean, levels: Levels, state: GameState): void;
+  update(
+    dt: number,
+    time: number,
+    calm: boolean,
+    levels: Levels,
+    state: GameState,
+    instant?: boolean,
+  ): void;
 }

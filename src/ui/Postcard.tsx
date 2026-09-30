@@ -46,8 +46,8 @@ export function Postcard({
   });
   const lines = carries(state);
   return (
-    <div className="paper grid gap-0 sm:grid-cols-[1.1fr_1fr]">
-      <div className="relative bg-[#dfe6dc] p-3">
+    <div className="paper postcard grid gap-0 sm:grid-cols-[1.1fr_1fr]">
+      <div className="postcard-map relative bg-[#dfe6dc] p-3">
         <svg
           viewBox="0 0 250 240"
           className="h-auto w-full"

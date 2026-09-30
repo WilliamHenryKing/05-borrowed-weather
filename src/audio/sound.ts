@@ -52,6 +52,12 @@ export class SoundBoard {
   private readonly buffers = new Map<string, AudioBuffer>();
   private mix: AmbienceMix | null = null;
   private duck = 1;
+  private disposed = false;
+  private readonly loading = new AbortController();
+  private readonly sources = new Map<
+    AudioBufferSourceNode,
+    { gain?: GainNode; when: number; loop: boolean }
+  >();
   muted: boolean;
 
   constructor() {
@@ -63,18 +69,16 @@ export class SoundBoard {
     }
     this.muted = stored;
     if (typeof document !== "undefined") {
-      document.addEventListener("visibilitychange", () => {
-        if (!this.ctx) return;
-        if (document.hidden) void this.ctx.suspend();
-        else void this.ctx.resume();
-      });
+      document.addEventListener("visibilitychange", this.onVisibility);
     }
   }
 
   /** Create the audio graph and start loading on the first user gesture. */
   unlock(): void {
+    if (this.disposed) return;
     if (this.ctx) {
-      if (this.ctx.state === "suspended" && !document.hidden) void this.ctx.resume();
+      if (this.ctx.state === "suspended" && !document.hidden)
+        void this.ctx.resume().catch(() => {});
       return;
     }
     const Ctx = window.AudioContext;
@@ -104,10 +108,15 @@ export class SoundBoard {
   }
 
   private async fetchBuffer(name: string): Promise<AudioBuffer | null> {
-    if (!this.ctx) return null;
+    const ctx = this.ctx;
+    if (this.disposed || !ctx) return null;
     try {
-      const res = await fetch(url(name));
-      const buf = await this.ctx.decodeAudioData(await res.arrayBuffer());
+      const res = await fetch(url(name), { signal: this.loading.signal });
+      if (!res.ok || this.disposed) return null;
+      const data = await res.arrayBuffer();
+      if (this.disposed) return null;
+      const buf = await ctx.decodeAudioData(data);
+      if (this.disposed || this.ctx !== ctx) return null;
       this.buffers.set(name, buf);
       return buf;
     } catch {
@@ -117,6 +126,7 @@ export class SoundBoard {
 
   private async load(): Promise<void> {
     await Promise.all(SFX.map((s) => this.fetchBuffer(s)));
+    if (this.disposed) return;
     await Promise.all(
       BEDS.map(async (bed) => {
         const buf = await this.fetchBuffer(`amb-${bed}`);
@@ -124,35 +134,40 @@ export class SoundBoard {
         if (buf && out) this.loop(buf, out, Math.random() * buf.duration);
       }),
     );
+    if (this.disposed) return;
     const music = await this.fetchBuffer("music");
     if (music && this.music) this.loop(music, this.music, 0);
     if (this.mix) this.setMix(this.mix);
   }
 
   private loop(buf: AudioBuffer, out: AudioNode, offset: number): void {
-    if (!this.ctx) return;
+    if (this.disposed || !this.ctx) return;
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
     src.loop = true;
     src.connect(out);
+    this.track(src, { when: this.ctx.currentTime, loop: true });
     src.start(0, offset);
   }
 
   play(name: Sfx, opts: { delay?: number; rate?: number; gain?: number } = {}): void {
     const ctx = this.ctx;
     const buf = this.buffers.get(name);
-    if (!ctx || !buf || !this.sfxBus || ctx.state !== "running") return;
+    if (this.disposed || !ctx || !buf || !this.sfxBus || ctx.state !== "running") return;
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.playbackRate.value = opts.rate ?? 1;
     const g = ctx.createGain();
     g.gain.value = opts.gain ?? 1;
     src.connect(g).connect(this.sfxBus);
-    src.start(ctx.currentTime + (opts.delay ?? 0));
+    const when = ctx.currentTime + Math.max(0, opts.delay ?? 0);
+    this.track(src, { gain: g, when, loop: false });
+    src.start(when);
   }
 
   /** Glide ambience and music towards the mix for where the hiker now stands. */
   setMix(mix: AmbienceMix): void {
+    if (this.disposed) return;
     this.mix = mix;
     const ctx = this.ctx;
     if (!ctx) return;
@@ -164,11 +179,13 @@ export class SoundBoard {
 
   /** Lower the music while a panel is open. */
   setDucked(ducked: boolean): void {
+    if (this.disposed) return;
     this.duck = ducked ? 0.45 : 1;
     if (this.mix) this.setMix(this.mix);
   }
 
   setMuted(muted: boolean): void {
+    if (this.disposed) return;
     this.muted = muted;
     try {
       localStorage.setItem(MUTE_KEY, muted ? "1" : "0");
@@ -177,5 +194,59 @@ export class SoundBoard {
     }
     if (this.ctx && this.master)
       this.master.gain.setTargetAtTime(muted ? 0 : 1, this.ctx.currentTime, 0.05);
+  }
+
+  private readonly onVisibility = (): void => {
+    const ctx = this.ctx;
+    if (this.disposed || !ctx) return;
+    void (document.hidden ? ctx.suspend() : ctx.resume()).catch(() => {});
+  };
+
+  private track(
+    source: AudioBufferSourceNode,
+    state: { gain?: GainNode; when: number; loop: boolean },
+  ): void {
+    this.sources.set(source, state);
+    source.onended = () => this.release(source);
+  }
+
+  private release(source: AudioBufferSourceNode, stop = false): void {
+    const state = this.sources.get(source);
+    if (!state) return;
+    this.sources.delete(source);
+    source.onended = null;
+    if (stop) {
+      try {
+        source.stop();
+      } catch {
+        /* Already ended. */
+      }
+    }
+    source.disconnect();
+    state.gain?.disconnect();
+  }
+
+  /** Cancel scheduled steps/chimes from the previous trip, preserving current ambience. */
+  cancelPending(): void {
+    if (!this.ctx) return;
+    for (const [source, state] of this.sources)
+      if (!state.loop && state.when > this.ctx.currentTime) this.release(source, true);
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    if (typeof document !== "undefined")
+      document.removeEventListener("visibilitychange", this.onVisibility);
+    this.loading.abort();
+    for (const source of this.sources.keys()) this.release(source, true);
+    for (const node of [this.master, this.sfxBus, this.music, this.filter, ...this.beds.values()])
+      node?.disconnect();
+    this.beds.clear();
+    this.buffers.clear();
+    this.mix = null;
+    const ctx = this.ctx;
+    this.ctx = this.master = this.sfxBus = this.music = this.filter = null;
+    if (ctx && ctx.state !== "closed") void ctx.close().catch(() => {});
   }
 }

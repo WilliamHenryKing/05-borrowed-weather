@@ -4,6 +4,7 @@
 // line where water meets stone and turf, and rain rings while rain falls on it.
 
 import * as THREE from "three";
+import type { SceneResources } from "./resources";
 
 const VERT = /* glsl */ `
 #include <fog_pars_vertex>
@@ -83,6 +84,12 @@ export interface Water {
 
 let ripples: THREE.DataTexture | null = null;
 const surfaces: THREE.MeshPhysicalMaterial[] = [];
+
+export function clearWater(resources: SceneResources): void {
+  for (const material of surfaces.splice(0)) resources.material(material);
+  if (ripples) resources.own(ripples);
+  ripples = null;
+}
 
 /**
  * The adaptive step's cheap water: no transmission pass, a tinted, slightly see-through surface

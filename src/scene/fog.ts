@@ -4,6 +4,7 @@
 
 import * as THREE from "three";
 import { fbm, rng } from "./kit";
+import type { SceneResources } from "./resources";
 
 const VERT = /* glsl */ `
 #include <fog_pars_vertex>
@@ -68,6 +69,11 @@ export interface FogOptions {
 }
 
 let noisyPuff: THREE.Texture | null = null;
+
+export function clearFog(resources: SceneResources): void {
+  if (noisyPuff) resources.own(noisyPuff);
+  noisyPuff = null;
+}
 
 /** A soft puff with fbm holes in it, so billboards read as vapour, not balls. */
 export function noisyPuffTexture(): THREE.Texture {

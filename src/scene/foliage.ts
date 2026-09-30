@@ -4,8 +4,9 @@
 // foliage shading follows ODD TIDE's: wind bends each plant by height above its own origin.
 
 import * as THREE from "three";
-import { assets, type Foliage, whenFoliage } from "./assets";
+import { assetResources, assets, type Foliage, whenFoliage } from "./assets";
 import { rng } from "./kit";
+import type { SceneResources } from "./resources";
 
 const wind = { time: { value: 0 }, strength: { value: 1 } };
 
@@ -17,8 +18,11 @@ export function setWind(time: number, strength: number): void {
 
 let reveal: ((objects: THREE.Object3D[]) => unknown) | null = null;
 /** How streamed foliage joins the scene (the stage compiles its shaders before showing it). */
-export function setFoliageReveal(fn: (objects: THREE.Object3D[]) => unknown): void {
+export function setFoliageReveal(fn: (objects: THREE.Object3D[]) => unknown): () => void {
   reveal = fn;
+  return () => {
+    if (reveal === fn) reveal = null;
+  };
 }
 
 let density = 1;
@@ -71,6 +75,12 @@ let fernMat: THREE.MeshStandardMaterial | null = null;
 let stemMat: THREE.MeshStandardMaterial | null = null;
 let headMat: THREE.MeshStandardMaterial | null = null;
 
+export function clearFoliage(resources: SceneResources): void {
+  for (const material of [grassMat, fernMat, stemMat, headMat])
+    if (material) resources.material(material);
+  grassMat = fernMat = stemMat = headMat = null;
+}
+
 /** Scan materials; only call once foliage has arrived (inside whenFoliage). */
 function scanMaterials(grass: Foliage, fern: Foliage) {
   if (!grassMat || !fernMat) {
@@ -96,13 +106,18 @@ function whenScans(
   group: THREE.Group,
   build: (grass: Foliage, fern: Foliage) => void,
 ): THREE.Group {
-  whenFoliage(() => {
-    const { grass, fern } = assets();
+  const loaded = assets();
+  const show = reveal;
+  const remove = whenFoliage(() => {
+    const { grass, fern } = loaded;
     if (!grass || !fern) return;
     const before = group.children.length;
     build(grass, fern);
-    reveal?.(group.children.slice(before));
+    void Promise.resolve(show?.(group.children.slice(before))).catch((error) =>
+      console.warn("Foliage shader preparation failed", error),
+    );
   });
+  assetResources(loaded).own({ dispose: remove });
   return group;
 }
 

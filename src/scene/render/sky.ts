@@ -14,6 +14,7 @@ export interface SkyLight {
   /** Mean radiance of the band just above the horizon (linear), for haze. */
   horizon: THREE.Color;
   environment: THREE.Texture;
+  dispose(): void;
 }
 
 const half = THREE.DataUtils.fromHalfFloat;
@@ -114,7 +115,8 @@ export function installSky(
   iblSource.flipY = hdr.flipY;
   iblSource.needsUpdate = true;
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const environment = pmrem.fromEquirectangular(iblSource).texture;
+  const target = pmrem.fromEquirectangular(iblSource);
+  const environment = target.texture;
   pmrem.dispose();
   iblSource.dispose();
 
@@ -123,5 +125,12 @@ export function installSky(
   scene.backgroundRotation.setFromQuaternion(orient);
   scene.environmentRotation.setFromQuaternion(orient);
   const sunColour = sunRgb.multiplyScalar(1 / Math.max(sunE, 1e-6));
-  return { sun, sunIlluminance: sunE, sunColour, horizon, environment };
+  return {
+    sun,
+    sunIlluminance: sunE,
+    sunColour,
+    horizon,
+    environment,
+    dispose: () => target.dispose(),
+  };
 }
