@@ -1,0 +1,38 @@
+{
+  "slug": "05-borrowed-weather",
+  "sourceCommit": "9e020a15f3a61f33a8a661c5314284f000baa811",
+  "url": "https://05-borrowed-weather.williamking.workers.dev",
+  "capturedAt": "2026-10-01T06:13:49.469Z",
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 2060 (0x00001F15) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "errors": [],
+  "desktop": {
+    "width": 1440,
+    "height": 900
+  },
+  "phone": {
+    "width": 390,
+    "height": 844
+  },
+  "frames": 48,
+  "browser": "154.0.8037.58",
+  "assets": [
+    "/assets/index-DiXzAXLR.js"
+  ],
+  "matchesLocalBuild": true,
+  "phoneOverflow": false,
+  "gifBytes": 2334707,
+  "description": "Current descent along the floating trail into the first interactive guide",
+  "phoneIsEmulated": true,
+  "loop": {
+    "frames": 48,
+    "delayCentiseconds": 16,
+    "width": 720,
+    "disposal": "None"
+  },
+  "media": [
+    "preview.gif",
+    "desktop.jpg",
+    "detail.jpg",
+    "phone.jpg"
+  ]
+}

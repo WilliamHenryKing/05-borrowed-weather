@@ -1,86 +1,85 @@
-<div align="center">
+# BORROWED WEATHER
 
-<img src="docs/readme/banner.svg" alt="Borrowed Weather: a glass jar in which fog curls, rain drips and a gust streaks, beside the title" width="100%" />
+<p align="center"><img src="docs/readme/banner.svg" alt="BORROWED WEATHER" width="100%"></p>
 
-<br />
+One hiker, one glass jar and a mountain that rearranges itself when you borrow its weather. Take fog, rain or wind from one place and release it in another to build a route to the Lantern Shelter. Every useful shortcut changes somewhere else.
 
-[![Play it live](https://img.shields.io/badge/Play_it_live-ffb45e?style=for-the-badge&logo=googlechrome&logoColor=2b3826&labelColor=2b3826&color=ffb45e)](https://05-borrowed-weather.williamking.workers.dev)
-![three.js](https://img.shields.io/badge/three.js_0.186-ffb45e?style=for-the-badge&logo=threedotjs&logoColor=2b3826)
-![React](https://img.shields.io/badge/React_19-ffb45e?style=for-the-badge&logo=react&logoColor=2b3826)
-![TypeScript](https://img.shields.io/badge/TypeScript-ffb45e?style=for-the-badge&logo=typescript&logoColor=2b3826)
-![Vite](https://img.shields.io/badge/Vite-ffb45e?style=for-the-badge&logo=vite&logoColor=2b3826)
-![GSAP](https://img.shields.io/badge/GSAP-ffb45e?style=for-the-badge&logo=greensock&logoColor=2b3826)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_4-ffb45e?style=for-the-badge&logo=tailwindcss&logoColor=2b3826)
-![Bun](https://img.shields.io/badge/Bun-ffb45e?style=for-the-badge&logo=bun&logoColor=2b3826)
+**[Set off up the trail →](https://05-borrowed-weather.williamking.workers.dev)** · [Run locally](#run-locally) · [Credits](#credits)
 
-**Carry one glass jar up a misty mountain trail: every pocket of weather you borrow changes the place you took it from and the place you let it go.**
+<p align="center"><img src="docs/readme/preview.gif" alt="Current descent along the floating trail into the first interactive guide" width="800"></p>
 
-<img src="docs/readme/preview.gif" alt="Taking the fog at Fog Ford: wisps swirl into the jar, the stepping stones appear, the hiker crosses and releases the fog into Cairn Hollow, where it gathers into a cloud step" width="800" />
+## Learn the weather by using it
 
-</div>
+**Set off** begins a camera descent along the six connected dioramas. The optional four-step guide follows walking, taking, carrying and releasing, advancing only after your action. Later help responds to the place and weather you actually have.
 
-## How to play
-
-Take weather and the place changes. Release it somewhere else and that place changes too. The jar holds one kind at a time, so order matters. Reach the Lantern Shelter above the clouds and wake its three instruments.
-
-| Weather | What it does on the trail |
+| Weather | A few consequences |
 | --- | --- |
-| Fog | Hides the ford's stepping stones and the tarn's ferry lane. Released in the marked hollow, it gathers into a cloud step. |
-| Rain | Uncurls the terrace ferns into a stair, raises the water and fills the rain gauge. |
-| Wind | Turns the vane that runs the basket lift, and fills the leaf ferry's sail. |
+| Fog | Veils stepping stones and a ferry lane; gathers into a cloud step in the marked hollow. |
+| Rain | Uncurls ferns into steps, raises water and fills the shelter's gauge. |
+| Wind | Drives a basket lift, fills a leaf ferry's sail and turns the shelter's instrument. |
 
-| Action | Keyboard | Mouse and touch |
+The jar holds one kind at a time. To finish, reach the shelter and wake its three instruments. There is no countdown or permanent failure: you can undo a borrow by returning the weather, and a solver-backed hint helps recover the route.
+
+| Action | Keyboard | Pointer or touch |
 | --- | --- | --- |
-| Walk | <kbd>←</kbd> <kbd>→</kbd> or <kbd>A</kbd> <kbd>D</kbd> | Tap a diorama, a trail dot, or the ← → buttons |
-| Take fog, rain or wind | <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> | **Take** buttons |
-| Release what the jar holds | <kbd>R</kbd> | **Release** button |
-| Hint | <kbd>H</kbd> | **Hint** |
-| Field notebook | <kbd>N</kbd> | **Notebook** (sit on a log to read) |
-| Mute or unmute | <kbd>M</kbd> | Speaker button |
-| Close a panel | <kbd>Esc</kbd> | **Back to the trail** |
+| Walk | Left/Right or A/D | Diorama, trail dot or arrow buttons |
+| Take fog / rain / wind | 1 / 2 / 3 | Take buttons |
+| Release the jar | R | Release |
+| Ask for a hint | H | Hint |
+| Read discoveries | N | Notebook |
+| Close a panel / toggle sound | Escape / M | Panel close / Sound |
 
-There is no timer and no fail state: every take can be undone by releasing it where it came from.
+## A trail that remembers what happened
 
-## What's inside
+The notebook records discoveries when their conditions actually occur. At the shelter, a postcard maps the route you took; replay clears the previous trip's clock and discoveries. Layered fog reveals and hides crossings, rain makes rings in the water, and the sound mix changes with your position and the weather around you.
 
-- **Six hand-built dioramas** climbing from a sheep gate to a lantern shelter above a cloud sea, built from scanned CC0 rock, turf, wood and grass under one real sky.
-- **Two consequences per borrow:** the vane lift stops when its breeze is in your jar, so the route needs a real plan, not a straight walk.
-- **Weather that looks like weather:** layered noise fog that veils the crossing, living water with foam and rain rings, a swirl that pours each pocket into and out of the jar.
-- **A hint that never lies:** it runs a solver over the live puzzle and names the next take or release that matters, and what it will change.
-- **A field notebook** that records each rule the first time you see it, and a **postcard** at the end that maps the route you actually took.
-- **Sound that follows the weather:** rain patters where there is rain, fog muffles the world, and the music settles when a panel opens.
-- **Plays anywhere:** desktop and phone layouts, mouse, touch and keyboard, visible focus, and `prefers-reduced-motion` respected throughout.
+The scene combines authored island forms with credited CC0 rock, turf, wood and foliage. Its sky also supplies the environment lighting. Quality tiers, prepared scene shaders and reduced rendering cost keep a tour through the trail from compiling a new scene during play.
 
-<table>
-  <tr>
-    <td width="72%"><img src="docs/readme/desktop.png" alt="Desktop: the fog at Fog Ford veiling the beck, with the next islands drifting in warm haze" /></td>
-    <td width="28%"><img src="docs/readme/phone.png" alt="Phone: Wool Gate with its sheep, the trail HUD and the jar" /></td>
-  </tr>
-  <tr>
-    <td align="center">Desktop, 1440 × 900</td>
-    <td align="center">Phone, 390 × 844</td>
-  </tr>
-</table>
+## Rules and verification
 
-## Built with
+Pure TypeScript rules and a breadth-first solver cover **37,430 reachable states**. The search both checks that the trail remains recoverable and supplies the in-game hint. Rendering and audio observe this state rather than deciding puzzle outcomes.
 
-three.js 0.186 (no React Three Fiber), React 19, strict TypeScript, Vite, GSAP, Tailwind CSS 4, Biome and Bun, with Playwright for the end-to-end walk. The world is lit by one CC0 sky and built from scanned CC0 rock, turf, wood and foliage, with the islands, fog, water and effects authored in code.
+Application revision `9e020a1` passed **68 tests / 17,740 assertions** and seven RTX 2060 scenarios, including two complete trails, replay, discoveries, delayed startup, live reduced motion and three touch sizes. Read the [bug-pass report](docs/visual/BUG-PASS-2026-09-30.md).
 
-- **Weather routing solver.** The rules are pure TypeScript. A breadth-first search over all 37,430 reachable puzzle states proves in the tests that the trail can be finished from every one of them (no dead ends) and that every borrow can be undone. The same search powers the in-game hint.
-- **One lighting model.** A CC0 HDRI is both the visible sky and the image-based light. Its sun is measured out of the image (direction, illuminance, colour), removed from the lighting copy so it is not counted twice, and handed to the key light. The post chain is GTAO, thresholded bloom, SMAA, then AgX once; exposure is the only brightness control.
-- **Layered fog.** Each bank is a stack of horizontal sheets running an fbm noise shader, dense in the middle and feathered at the edges, with noisy billboards for side volume. Its level sinks and thins the bank as you bottle it.
-- **Weather-aware sound mix.** A pure function maps where you stand to rain, wind, river and bird beds, and adds a low-pass filter while fog is present. Web Audio glides between mixes, and nothing loads until your first gesture.
+Source map: [src/game/](src/game/) for rules and solver, [src/scene/](src/scene/) for the trail, [src/ui/](src/ui/) for notebook and controls, and [src/audio/](src/audio/) for the positional mix.
 
-## Run it locally
+## Current screenshots
+
+| Desktop | Phone |
+| --- | --- |
+| <img src="docs/readme/desktop.jpg" alt="BORROWED WEATHER: current desktop opening" width="600"> | <img src="docs/readme/phone.jpg" alt="BORROWED WEATHER: current phone interface" width="240"> |
+
+<img src="docs/readme/detail.jpg" alt="BORROWED WEATHER: the experience after the opening" width="800">
+
+The opening loop and three main screenshots were captured from the live site on **1 October 2026**, using Chrome on this workstation; the phone image is a 390 × 844 browser viewport. The animated preview is a short loop, not a full playthrough. [Capture details](docs/readme/capture.json).
+
+## Run locally
+
+Use **Bun 1.3.10** (the version pinned in `package.json`) and Node.js 22.12 or newer. From this repository:
 
 ```sh
-bun install
+bun install --frozen-lockfile
 bun run dev      # http://127.0.0.1:4515/
-bun run check    # strict tsc, Biome, bun test, production build into dist/
-bun run e2e      # full trail, replay, notebook, touch layouts and loading/input regressions
+bun run check    # strict types, Biome, unit tests and production build
+bun run preview  # http://127.0.0.1:4615/ after the build
 ```
 
-The rules live in `src/game/` (tested in `tests/`), the three.js scene in `src/scene/`, sound in `src/audio/` and the React HUD in `src/ui/`. The browser suite needs Playwright Chromium (`bunx playwright install chromium`). The collection release runner uses installed Chrome on the real GPU; `REQUIRE_REAL_GPU=1` also asserts the RTX renderer. It covers two complete trails, ending/replay, discoveries, live reduced motion, held keys, slow loading and three touch layouts.
+Development and preview are separate long-running commands; run one at a time or use separate terminals. `bun run build` writes the static production output to `dist/`. Dependencies and the lockfile are local to this project.
+
+### Browser suite
+
+Install the test browser once, then run the checked-in Playwright suite. Its configuration builds and starts the production preview. Browser scenarios are separate from `bun run check`.
+
+```sh
+bunx playwright install chromium
+bun run e2e
+```
+
+The recorded real-GPU release checks used installed Chrome on an RTX 2060; the default Chromium configuration is not a claim of physical-phone coverage.
+
+## Stack and release
+
+Direct Three.js 0.186 · React 19.3 · strict TypeScript · Vite 8.3 · GSAP 3.15 · Tailwind CSS 4.3 · Bun 1.3.10 · Biome. The public website is served by Cloudflare Workers. This README describes [application revision 9e020a1](https://github.com/WilliamHenryKing/05-borrowed-weather/commit/9e020a15f3a61f33a8a661c5314284f000baa811); the documentation refresh changes no application behaviour.
 
 ## Credits
 
@@ -90,16 +89,16 @@ Visuals are all CC0 from [Poly Haven](https://polyhaven.com), resized and re-enc
 
 | Asset | Source | Author | Licence | Used for |
 | --- | --- | --- | --- | --- |
-| Table Mountain 1 (Pure Sky) HDRI | https://polyhaven.com/a/table_mountain_1_puresky | Greg Zaal, Jarod Guest | CC0 | Sky, image-based light, sun |
-| Cliff Side | https://polyhaven.com/a/cliff_side | Poly Haven | CC0 | Island rock |
-| Mossy Rock | https://polyhaven.com/a/mossy_rock | Poly Haven | CC0 | Moss, shelter masonry |
-| Grass Ground | https://polyhaven.com/a/grass_ground | Poly Haven | CC0 | Turf, shelter roof |
-| River Small Rocks | https://polyhaven.com/a/river_small_rocks | Poly Haven | CC0 | Beck and tarn beds |
-| Weathered Planks | https://polyhaven.com/a/weathered_planks | Poly Haven | CC0 | Gate, posts, jetty, signs |
-| Bark Brown 02 | https://polyhaven.com/a/bark_brown_02 | Poly Haven | CC0 | Logs, lift basket |
-| Rock Moss Set 01 and 02 | https://polyhaven.com/a/rock_moss_set_01, https://polyhaven.com/a/rock_moss_set_02 | Poly Haven | CC0 | Walls, cairns, banks, stepping stones |
-| Boulder 01 | https://polyhaven.com/a/boulder_01 | Poly Haven | CC0 | Hollow ledge, terrace cliff |
-| Grass Medium 02, Fern 02 | https://polyhaven.com/a/grass_medium_02, https://polyhaven.com/a/fern_02 | Poly Haven (processed for ODD TIDE) | CC0 | Grass and ferns |
+| Table Mountain 1 (Pure Sky) HDRI | [Source](https://polyhaven.com/a/table_mountain_1_puresky) | Greg Zaal, Jarod Guest | CC0 | Sky, image-based light, sun |
+| Cliff Side | [Source](https://polyhaven.com/a/cliff_side) | Poly Haven | CC0 | Island rock |
+| Mossy Rock | [Source](https://polyhaven.com/a/mossy_rock) | Poly Haven | CC0 | Moss, shelter masonry |
+| Grass Ground | [Source](https://polyhaven.com/a/grass_ground) | Poly Haven | CC0 | Turf, shelter roof |
+| River Small Rocks | [Source](https://polyhaven.com/a/river_small_rocks) | Poly Haven | CC0 | Beck and tarn beds |
+| Weathered Planks | [Source](https://polyhaven.com/a/weathered_planks) | Poly Haven | CC0 | Gate, posts, jetty, signs |
+| Bark Brown 02 | [Source](https://polyhaven.com/a/bark_brown_02) | Poly Haven | CC0 | Logs, lift basket |
+| Rock Moss Set 01 and 02 | [Source](https://polyhaven.com/a/rock_moss_set_01,) [Source](https://polyhaven.com/a/rock_moss_set_02) | Poly Haven | CC0 | Walls, cairns, banks, stepping stones |
+| Boulder 01 | [Source](https://polyhaven.com/a/boulder_01) | Poly Haven | CC0 | Hollow ledge, terrace cliff |
+| Grass Medium 02, Fern 02 | [Source](https://polyhaven.com/a/grass_medium_02,) [Source](https://polyhaven.com/a/fern_02) | Poly Haven (processed for ODD TIDE) | CC0 | Grass and ferns |
 
 The islands, fog, water, clouds, jar, hiker, sheep, instruments and icons are generated in code. The post-processing chain, foliage wind and terrain shading are adapted from the ODD TIDE project in the same portfolio collection.
 
@@ -107,12 +106,16 @@ Audio is all CC0 (public domain). It was converted to mono OGG Vorbis, trimmed a
 
 | File(s) | Source | Author | Licence |
 | --- | --- | --- | --- |
-| `music.ogg` ("Contemplation") | https://opengameart.org/content/contemplation-0 | Joth | CC0 |
-| `amb-rain.ogg` ("Amb rain loop 1") | https://opengameart.org/content/amb-rain-loop-1 | Kresiek The Furry | CC0 |
-| `amb-birds.ogg`, `amb-river.ogg`, `amb-wind.ogg` ("Park ambiences") | https://opengameart.org/content/park-ambiences | Thimras | CC0 |
-| `step-1..3.ogg` (footstep_grass), `take.ogg`, `release.ogg` (impactGlass), `restore.ogg` (impactBell) | https://kenney.nl/assets/impact-sounds | Kenney (kenney.nl) | CC0 |
-| `book-open.ogg`, `book-close.ogg`, `page.ogg` (bookOpen, bookClose, bookFlip2) | https://kenney.nl/assets/rpg-audio | Kenney (kenney.nl) | CC0 |
-| `click.ogg`, `hint.ogg`, `toggle.ogg` (click_002, question_002, toggle_001) | https://kenney.nl/assets/interface-sounds | Kenney (kenney.nl) | CC0 |
-| `blocked.ogg`, `discover.ogg`, `finish.ogg` (jingles_PIZZI04, 10, 02) | https://kenney.nl/assets/music-jingles | Kenney (kenney.nl) | CC0 |
+| `music.ogg` ("Contemplation") | [Source](https://opengameart.org/content/contemplation-0) | Joth | CC0 |
+| `amb-rain.ogg` ("Amb rain loop 1") | [Source](https://opengameart.org/content/amb-rain-loop-1) | Kresiek The Furry | CC0 |
+| `amb-birds.ogg`, `amb-river.ogg`, `amb-wind.ogg` ("Park ambiences") | [Source](https://opengameart.org/content/park-ambiences) | Thimras | CC0 |
+| `step-1..3.ogg` (footstep_grass), `take.ogg`, `release.ogg` (impactGlass), `restore.ogg` (impactBell) | [Source](https://kenney.nl/assets/impact-sounds) | Kenney (kenney.nl) | CC0 |
+| `book-open.ogg`, `book-close.ogg`, `page.ogg` (bookOpen, bookClose, bookFlip2) | [Source](https://kenney.nl/assets/rpg-audio) | Kenney (kenney.nl) | CC0 |
+| `click.ogg`, `hint.ogg`, `toggle.ogg` (click_002, question_002, toggle_001) | [Source](https://kenney.nl/assets/interface-sounds) | Kenney (kenney.nl) | CC0 |
+| `blocked.ogg`, `discover.ogg`, `finish.ogg` (jingles_PIZZI04, 10, 02) | [Source](https://kenney.nl/assets/music-jingles) | Kenney (kenney.nl) | CC0 |
 
 <p align="center"><sub>Part of William King's portfolio collection.</sub></p>
+
+---
+
+Part of [William King's portfolio collection](https://github.com/WilliamHenryKing).
